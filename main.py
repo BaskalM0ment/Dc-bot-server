@@ -1,19 +1,17 @@
-import os
 import discord
 from discord.ext import commands
-from discord import app_commands
+import os
 
-intents = discord.Intents.default()
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="!")
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
-    print(f"✅ Logged in as {bot.user}")
+    print(f"Logged in as {bot.user}")
 
-@bot.tree.command(name="ping", description="Check bot status")
-async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message("🏓 Pong!")
+# Example command
+@bot.command()
+async def ping(ctx):
+    await ctx.send("Pong!")
 
-bot.run(os.getenv("MTA1MjU3MTY4Mzc2MTk1MDc2MA.GrvarT.vcNeLNZ4deuL25wGMgJhEAyrHLIbBxqXq4hHx8"))
-print("MTA1MjU3MTY4Mzc2MTk1MDc2MA.GrvarT.vcNeLNZ4deuL25wGMgJhEAyrHLIbBxqXq4hHx8 from env:"os.getenv("MTA1MjU3MTY4Mzc2MTk1MDc2MA.GrvarT.vcNeLNZ4deuL25wGMgJhEAyrHLIbBxqXq4hHx8"))
+# Start the bot using the token from environment
+bot.run(os.getenv("DISCORD_TOKEN"))
