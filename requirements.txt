@@ -1,1 +1,2 @@
-nextcord
+interactions.py==5.10.0
+openai==1.14.3
