@@ -1,5 +1,3 @@
-interactions.py
-transformers
-torch
-bitsandbytes
-accelerate
+interactions.py==5.13.2
+requests
+python-dotenv
