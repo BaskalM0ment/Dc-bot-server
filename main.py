@@ -1,10 +1,13 @@
 import interactions
 import os
-from openai import OpenAI
+import openai
 
+# Load tokens from environment variables
 TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
+# Setup bot with proper intents
 intents = interactions.Intents.DEFAULT
 bot = interactions.Client(token=TOKEN, intents=intents)
 
@@ -13,19 +16,18 @@ bot = interactions.Client(token=TOKEN, intents=intents)
 async def ping(ctx: interactions.SlashContext):
     await ctx.send("🏓 Pong!")
 
-# ✅ /ask (ChatGPT)
-@interactions.slash_command(name="ask", description="Ask ChatGPT something")
+# ✅ /ask — ChatGPT question
+@interactions.slash_command(name="ask", description="Ask ChatGPT a question")
 @interactions.slash_option(
     name="prompt",
-    description="Your question",
+    description="What do you want to ask?",
     required=True,
     opt_type=interactions.OptionType.STRING
 )
 async def ask(ctx: interactions.SlashContext, prompt: str):
     await ctx.defer()
     try:
-        client = OpenAI(api_key=OPENAI_API_KEY)
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
@@ -34,11 +36,11 @@ async def ask(ctx: interactions.SlashContext, prompt: str):
     except Exception as e:
         await ctx.send(f"❌ OpenAI error: {e}")
 
-# ✅ /math (Evaluate expressions)
+# ✅ /math — Safe math evaluation
 @interactions.slash_command(name="math", description="Solve a math expression")
 @interactions.slash_option(
     name="expression",
-    description="e.g. 2 + 2 * 10",
+    description="e.g. (5 + 3) * 2",
     required=True,
     opt_type=interactions.OptionType.STRING
 )
@@ -49,7 +51,7 @@ async def math(ctx: interactions.SlashContext, expression: str):
     except Exception as e:
         await ctx.send(f"❌ Error: {e}")
 
-# ✅ /purge
+# ✅ /purge — Bulk delete messages
 @interactions.slash_command(name="purge", description="Delete messages")
 @interactions.slash_option(
     name="amount",
@@ -60,13 +62,13 @@ async def math(ctx: interactions.SlashContext, expression: str):
 async def purge(ctx: interactions.SlashContext, amount: int):
     await ctx.defer(ephemeral=True)
     if not ctx.author.permissions.manage_messages:
-        await ctx.send("❌ You don't have permission to do that.")
+        await ctx.send("❌ You don't have permission.", ephemeral=True)
         return
     deleted = await ctx.channel.purge(amount)
     await ctx.send(f"🧹 Deleted {len(deleted)} messages", ephemeral=True)
 
-# ✅ /kick
-@interactions.slash_command(name="kick", description="Kick a member")
+# ✅ /kick — Kick a member
+@interactions.slash_command(name="kick", description="Kick a member from the server")
 @interactions.slash_option(
     name="user",
     description="User to kick",
@@ -75,13 +77,13 @@ async def purge(ctx: interactions.SlashContext, amount: int):
 )
 async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     if not ctx.author.permissions.kick_members:
-        await ctx.send("❌ You don't have permission to kick members.")
+        await ctx.send("❌ You don't have permission.")
         return
     await user.kick()
-    await ctx.send(f"👢 {user.username} was kicked.")
+    await ctx.send(f"👢 {user.username} has been kicked.")
 
-# ✅ /ban
-@interactions.slash_command(name="ban", description="Ban a member")
+# ✅ /ban — Ban a member
+@interactions.slash_command(name="ban", description="Ban a member from the server")
 @interactions.slash_option(
     name="user",
     description="User to ban",
@@ -90,9 +92,10 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
 )
 async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     if not ctx.author.permissions.ban_members:
-        await ctx.send("❌ You don't have permission to ban members.")
+        await ctx.send("❌ You don't have permission.")
         return
     await user.ban()
-    await ctx.send(f"⛔ {user.username} was banned.")
+    await ctx.send(f"⛔ {user.username} has been banned.")
 
+# Start the bot
 bot.start()
