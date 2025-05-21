@@ -1,11 +1,20 @@
-import interactions
-import openai
 import os
+import interactions
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-# Set OpenAI API key from environment variable
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Load LLaMA 2 model and tokenizer with 8-bit quantization for VRAM savings
+MODEL_NAME = "meta-llama/Llama-2-7b-chat-hf"  # Make sure you accepted the model license on HuggingFace
 
-# Define Discord intents
+print("Loading model... this may take a while.")
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model = AutoModelForCausalLM.from_pretrained(
+    MODEL_NAME,
+    device_map="auto",
+    load_in_8bit=True,
+)
+generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
+
+# Discord intents needed
 intents = (
     interactions.Intents.GUILDS
     | interactions.Intents.GUILD_MESSAGES
@@ -14,29 +23,105 @@ intents = (
 
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
 
-@interactions.slash_command(name="ask", description="Ask ChatGPT a question")
+@bot.event
+async def on_ready():
+    print(f"Bot connected as {bot.me}")
+
+# ====== /ping command ======
+@interactions.slash_command(name="ping", description="Check bot responsiveness")
+async def ping(ctx: interactions.SlashContext):
+    await ctx.send("Pong! 🏓")
+
+# ====== /kick command ======
+@interactions.slash_command(name="kick", description="Kick a user")
+@interactions.slash_option(
+    name="user",
+    description="User to kick",
+    opt_type=interactions.OptionType.USER,
+    required=True,
+)
+async def kick(ctx: interactions.SlashContext, user: interactions.Member):
+    if not ctx.member.permissions.kick_members:
+        await ctx.send("❌ You don't have permission to kick members.", ephemeral=True)
+        return
+    try:
+        await user.kick()
+        await ctx.send(f"👢 {user.user.username} has been kicked.")
+    except Exception as e:
+        await ctx.send(f"Failed to kick user: {e}", ephemeral=True)
+
+# ====== /ban command ======
+@interactions.slash_command(name="ban", description="Ban a user")
+@interactions.slash_option(
+    name="user",
+    description="User to ban",
+    opt_type=interactions.OptionType.USER,
+    required=True,
+)
+async def ban(ctx: interactions.SlashContext, user: interactions.Member):
+    if not ctx.member.permissions.ban_members:
+        await ctx.send("❌ You don't have permission to ban members.", ephemeral=True)
+        return
+    try:
+        await user.ban()
+        await ctx.send(f"⛔ {user.user.username} has been banned.")
+    except Exception as e:
+        await ctx.send(f"Failed to ban user: {e}", ephemeral=True)
+
+# ====== /purge command ======
+@interactions.slash_command(name="purge", description="Delete messages in a channel")
+@interactions.slash_option(
+    name="amount",
+    description="Number of messages to delete",
+    opt_type=interactions.OptionType.INTEGER,
+    required=True,
+)
+async def purge(ctx: interactions.SlashContext, amount: int):
+    if not ctx.member.permissions.manage_messages:
+        await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
+        return
+    try:
+        deleted_count = 0
+        async for message in ctx.channel.history(limit=amount):
+            await message.delete()
+            deleted_count += 1
+        await ctx.send(f"🧹 Deleted {deleted_count} messages.", ephemeral=True)
+    except Exception as e:
+        await ctx.send(f"Failed to delete messages: {e}", ephemeral=True)
+
+# ====== /ask command (local LLaMA) ======
+@interactions.slash_command(name="ask", description="Ask the bot a question (local LLaMA)")
 @interactions.slash_option(
     name="question",
-    description="Your question for ChatGPT",
+    description="Your question for the bot",
     opt_type=interactions.OptionType.STRING,
     required=True,
 )
 async def ask(ctx: interactions.SlashContext, question: str):
-    await ctx.defer()
+    await ctx.defer()  # Acknowledge command to avoid timeout
+    
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": question},
-            ],
-            max_tokens=500,
+        # Generate answer with local model
+        prompt = f"User: {question}\nAssistant:"
+        
+        outputs = generator(
+            prompt,
+            max_length=200,
+            do_sample=True,
             temperature=0.7,
+            top_p=0.9,
+            num_return_sequences=1,
         )
-        answer = response.choices[0].message.content.strip()
+        answer = outputs[0]["generated_text"]
+        
+        # Clean up the generated text (remove prompt part)
+        if answer.startswith(prompt):
+            answer = answer[len(prompt):].strip()
+        
         await ctx.send(answer)
     except Exception as e:
-        await ctx.send(f"OpenAI error: {e}", ephemeral=True)
+        await ctx.send(f"Error generating response: {e}", ephemeral=True)
+
 
 if __name__ == "__main__":
     bot.start()
