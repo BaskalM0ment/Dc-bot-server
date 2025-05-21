@@ -1,79 +1,75 @@
-import nextcord
-from nextcord.ext import commands
-from nextcord import Interaction, SlashOption
 import os
-import random
-import math
+import interactions
+import openai
 
-intents = nextcord.Intents.default()
-intents.message_content = True
-intents.guilds = True
-intents.members = True
+# Load environment variables
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+# Set up bot with intents
+bot = interactions.Client(
+    token=DISCORD_TOKEN,
+    intents=interactions.Intents.ALL
+)
 
-@bot.event
-async def on_ready():
-    print(f"✅ Bot is online as {bot.user}")
+# /ping command
+@interactions.slash_command(name="ping", description="Check if the bot is online")
+async def ping(ctx: interactions.CommandContext):
+    await ctx.send("🏓 Pong!")
 
-# /ping
-@bot.slash_command(name="ping", description="Check if the bot is alive")
-async def ping(interaction: Interaction):
-    await interaction.response.send_message("🏓 Pong!")
+# /kick command
+@interactions.slash_command(name="kick", description="Kick a user from the server")
+@interactions.option()
+async def kick(ctx: interactions.CommandContext, user: interactions.Member):
+    if not ctx.author.permissions.kick_members:
+        return await ctx.send("❌ You don't have permission to kick members.")
+    await ctx.guild.kick(user)
+    await ctx.send(f"✅ {user.username} has been kicked.")
 
-# /kick
-@bot.slash_command(name="kick", description="Kick a user")
-async def kick(interaction: Interaction,
-               member: nextcord.Member = SlashOption(description="User to kick"),
-               reason: str = SlashOption(description="Reason", required=False, default="No reason")):
-    if interaction.user.guild_permissions.kick_members:
-        await member.kick(reason=reason)
-        await interaction.response.send_message(f"👢 Kicked {member.name}")
-    else:
-        await interaction.response.send_message("🚫 You don't have permission.")
+# /ban command
+@interactions.slash_command(name="ban", description="Ban a user from the server")
+@interactions.option()
+async def ban(ctx: interactions.CommandContext, user: interactions.Member):
+    if not ctx.author.permissions.ban_members:
+        return await ctx.send("❌ You don't have permission to ban members.")
+    await ctx.guild.ban(user)
+    await ctx.send(f"✅ {user.username} has been banned.")
 
-# /ban
-@bot.slash_command(name="ban", description="Ban a user")
-async def ban(interaction: Interaction,
-              member: nextcord.Member = SlashOption(description="User to ban"),
-              reason: str = SlashOption(description="Reason", required=False, default="No reason")):
-    if interaction.user.guild_permissions.ban_members:
-        await member.ban(reason=reason)
-        await interaction.response.send_message(f"🔨 Banned {member.name}")
-    else:
-        await interaction.response.send_message("🚫 You don't have permission.")
+# /purge command
+@interactions.slash_command(name="purge", description="Delete a number of recent messages")
+@interactions.option()
+async def purge(ctx: interactions.CommandContext, amount: int):
+    if not ctx.author.permissions.manage_messages:
+        return await ctx.send("❌ You don't have permission to manage messages.")
+    messages = await ctx.channel.history(limit=amount)
+    await ctx.channel.purge(messages)
+    await ctx.send(f"🧹 Deleted {amount} messages.")
 
-# /purge
-@bot.slash_command(name="purge", description="Delete messages")
-async def purge(interaction: Interaction,
-                amount: int = SlashOption(description="Number to delete", required=True)):
-    if interaction.user.guild_permissions.manage_messages:
-        await interaction.channel.purge(limit=amount)
-        await interaction.response.send_message(f"🧹 Deleted {amount} messages")
-    else:
-        await interaction.response.send_message("🚫 You don't have permission.")
-
-# /ask
-@bot.slash_command(name="ask", description="Ask the bot a question")
-async def ask(interaction: Interaction, question: str = SlashOption(description="Your question")):
-    responses = [
-        "Hmm, good question.",
-        "I'm thinking... maybe?",
-        "Definitely!",
-        "Nope.",
-        "Try again later!",
-        "42 is the answer."
-    ]
-    await interaction.response.send_message(random.choice(responses))
-
-# /calc
-@bot.slash_command(name="calc", description="Calculate a math expression")
-async def calc(interaction: Interaction, expression: str = SlashOption(description="Math expression")):
+# /calc command for math
+@interactions.slash_command(name="calc", description="Calculate a math expression")
+@interactions.option()
+async def calc(ctx: interactions.CommandContext, expression: str):
     try:
         result = eval(expression)
-        await interaction.response.send_message(f"🧮 `{expression}` = `{result}`")
-    except:
-        await interaction.response.send_message("❌ Invalid math expression.")
+        await ctx.send(f"🧮 Result: `{result}`")
+    except Exception as e:
+        await ctx.send(f"❌ Error: {e}")
 
-# Run
-bot.run(os.getenv("DISCORD_TOKEN"))
+# /ask command using ChatGPT
+@interactions.slash_command(name="ask", description="Ask ChatGPT anything")
+@interactions.option()
+async def ask(ctx: interactions.CommandContext, prompt: str):
+    await ctx.defer()
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # change to "gpt-4" if needed
+            messages=[{"role": "user", "content": prompt}]
+        )
+        answer = response.choices[0].message.content
+        await ctx.send(answer[:2000])  # Discord message limit
+    except Exception as e:
+        await ctx.send(f"❌ OpenAI error: {e}")
+
+# Start bot
+bot.start()
