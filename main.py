@@ -1,31 +1,34 @@
-import os
 import interactions
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import os
+import requests
 
-# Load LLaMA 2 model and tokenizer with 8-bit quantization for VRAM savings
-MODEL_NAME = "meta-llama/Llama-2-7b-chat-hf"  # Make sure you accepted the model license on HuggingFace
-
-print("Loading model... this may take a while.")
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_NAME,
-    device_map="auto",
-    load_in_8bit=True,
-)
-generator = pipeline("text-generation", model=model, tokenizer=tokenizer)
-
-# Discord intents needed
+# Define Discord intents
 intents = (
     interactions.Intents.GUILDS
     | interactions.Intents.GUILD_MESSAGES
     | interactions.Intents.GUILD_MEMBERS
 )
 
+# Initialize the bot
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
 
-@bot.event
-async def on_ready():
-    print(f"Bot connected as {bot.me}")
+# === Local LLaMA Response Function ===
+def ask_llama(prompt):
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "llama3",
+                "prompt": prompt,
+                "stream": False
+            }
+        )
+        if response.status_code == 200:
+            return response.json()["response"].strip()
+        else:
+            return f"❌ LLaMA error: {response.text}"
+    except Exception as e:
+        return f"❌ Failed to contact LLaMA: {e}"
 
 # ====== /ping command ======
 @interactions.slash_command(name="ping", description="Check bot responsiveness")
@@ -89,39 +92,19 @@ async def purge(ctx: interactions.SlashContext, amount: int):
     except Exception as e:
         await ctx.send(f"Failed to delete messages: {e}", ephemeral=True)
 
-# ====== /ask command (local LLaMA) ======
-@interactions.slash_command(name="ask", description="Ask the bot a question (local LLaMA)")
+# ====== /ask command (uses LLaMA) ======
+@interactions.slash_command(name="ask", description="Ask a question to LLaMA")
 @interactions.slash_option(
     name="question",
-    description="Your question for the bot",
+    description="Your question",
     opt_type=interactions.OptionType.STRING,
     required=True,
 )
 async def ask(ctx: interactions.SlashContext, question: str):
-    await ctx.defer()  # Acknowledge command to avoid timeout
-    
-    try:
-        # Generate answer with local model
-        prompt = f"User: {question}\nAssistant:"
-        
-        outputs = generator(
-            prompt,
-            max_length=200,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
-            num_return_sequences=1,
-        )
-        answer = outputs[0]["generated_text"]
-        
-        # Clean up the generated text (remove prompt part)
-        if answer.startswith(prompt):
-            answer = answer[len(prompt):].strip()
-        
-        await ctx.send(answer)
-    except Exception as e:
-        await ctx.send(f"Error generating response: {e}", ephemeral=True)
+    await ctx.defer()
+    answer = ask_llama(question)
+    await ctx.send(answer)
 
-
+# ====== Start Bot ======
 if __name__ == "__main__":
     bot.start()
