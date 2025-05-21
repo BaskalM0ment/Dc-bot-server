@@ -88,7 +88,8 @@ async def purge(ctx: interactions.SlashContext, amount: int):
 async def ask(ctx: interactions.SlashContext, question: str):
     await ctx.defer()
     try:
-        response = openai.chat.completions.create(
+        # Old OpenAI API call (compatible with openai==0.28.0)
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
