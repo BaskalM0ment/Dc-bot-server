@@ -1,94 +1,79 @@
-import interactions
+import nextcord
+from nextcord.ext import commands
+from nextcord import Interaction, SlashOption
 import os
 import random
+import math
 
-# Load bot using environment token
-bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"))
+intents = nextcord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.members = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f"✅ Bot is online as {bot.user}")
 
 # /ping
-@bot.slash_command(
-    name="ping",
-    description="Test if the bot is responsive"
-)
-async def ping(ctx):
-    await ctx.send("🏓 Pong!")
-
+@bot.slash_command(name="ping", description="Check if the bot is alive")
+async def ping(interaction: Interaction):
+    await interaction.response.send_message("🏓 Pong!")
 
 # /kick
-@bot.slash_command(
-    name="kick",
-    description="Kick a member from the server"
-)
-@interactions.option()
-@interactions.option()
-async def kick(ctx, user: interactions.Member, reason: str = "No reason provided"):
-    if ctx.author.permissions.kick_members:
-        await user.kick(reason=reason)
-        await ctx.send(f"👢 {user.username} was kicked. Reason: {reason}")
+@bot.slash_command(name="kick", description="Kick a user")
+async def kick(interaction: Interaction,
+               member: nextcord.Member = SlashOption(description="User to kick"),
+               reason: str = SlashOption(description="Reason", required=False, default="No reason")):
+    if interaction.user.guild_permissions.kick_members:
+        await member.kick(reason=reason)
+        await interaction.response.send_message(f"👢 Kicked {member.name}")
     else:
-        await ctx.send("🚫 You don't have permission.")
-
+        await interaction.response.send_message("🚫 You don't have permission.")
 
 # /ban
-@bot.slash_command(
-    name="ban",
-    description="Ban a member from the server"
-)
-@interactions.option()
-@interactions.option()
-async def ban(ctx, user: interactions.Member, reason: str = "No reason provided"):
-    if ctx.author.permissions.ban_members:
-        await user.ban(reason=reason)
-        await ctx.send(f"🔨 {user.username} was banned. Reason: {reason}")
+@bot.slash_command(name="ban", description="Ban a user")
+async def ban(interaction: Interaction,
+              member: nextcord.Member = SlashOption(description="User to ban"),
+              reason: str = SlashOption(description="Reason", required=False, default="No reason")):
+    if interaction.user.guild_permissions.ban_members:
+        await member.ban(reason=reason)
+        await interaction.response.send_message(f"🔨 Banned {member.name}")
     else:
-        await ctx.send("🚫 You don't have permission.")
-
+        await interaction.response.send_message("🚫 You don't have permission.")
 
 # /purge
-@bot.slash_command(
-    name="purge",
-    description="Delete a number of messages from the channel"
-)
-@interactions.option()
-async def purge(ctx, amount: int):
-    if ctx.author.permissions.manage_messages:
-        await ctx.channel.purge(amount)
-        await ctx.send(f"🧹 Deleted {amount} messages.")
+@bot.slash_command(name="purge", description="Delete messages")
+async def purge(interaction: Interaction,
+                amount: int = SlashOption(description="Number to delete", required=True)):
+    if interaction.user.guild_permissions.manage_messages:
+        await interaction.channel.purge(limit=amount)
+        await interaction.response.send_message(f"🧹 Deleted {amount} messages")
     else:
-        await ctx.send("🚫 You don't have permission.")
-
+        await interaction.response.send_message("🚫 You don't have permission.")
 
 # /ask
-@bot.slash_command(
-    name="ask",
-    description="Ask the bot a question"
-)
-@interactions.option()
-async def ask(ctx, question: str):
+@bot.slash_command(name="ask", description="Ask the bot a question")
+async def ask(interaction: Interaction, question: str = SlashOption(description="Your question")):
     responses = [
-        "That's a great question!",
-        "Let me think... 🤔",
-        "I'd say... maybe?",
-        "Could be! Or maybe not.",
-        "I'm a bot, not a psychic 😅",
-        "42."
+        "Hmm, good question.",
+        "I'm thinking... maybe?",
+        "Definitely!",
+        "Nope.",
+        "Try again later!",
+        "42 is the answer."
     ]
-    await ctx.send(random.choice(responses))
-
+    await interaction.response.send_message(random.choice(responses))
 
 # /calc
-@bot.slash_command(
-    name="calc",
-    description="Calculate a math expression"
-)
-@interactions.option()
-async def calc(ctx, expression: str):
+@bot.slash_command(name="calc", description="Calculate a math expression")
+async def calc(interaction: Interaction, expression: str = SlashOption(description="Math expression")):
     try:
         result = eval(expression)
-        await ctx.send(f"🧮 `{expression}` = `{result}`")
-    except Exception as e:
-        await ctx.send(f"❌ Error: {e}")
+        await interaction.response.send_message(f"🧮 `{expression}` = `{result}`")
+    except:
+        await interaction.response.send_message("❌ Invalid math expression.")
 
-
-# Start the bot
-bot.start()
+# Run
+bot.run(os.getenv("DISCORD_TOKEN"))
