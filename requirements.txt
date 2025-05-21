@@ -1,2 +1,2 @@
-interactions.py==4.11.4
-openai==0.28.0
+interactions.py==5.13.2
+openai==0.28
