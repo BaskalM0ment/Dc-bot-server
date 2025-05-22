@@ -13,7 +13,7 @@ intents = (
     | interactions.Intents.GUILD_MEMBERS
 )
 
-# Initialize the bot client
+# Initialize the bot client with your Discord token and intents
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
 
 # ====== /ping ======
@@ -24,7 +24,10 @@ async def ping(ctx: interactions.SlashContext):
 # ====== /kick ======
 @interactions.slash_command(name="kick", description="Kick a user")
 @interactions.slash_option(
-    name="user", description="User to kick", opt_type=interactions.OptionType.USER, required=True
+    name="user",
+    description="User to kick",
+    opt_type=interactions.OptionType.USER,
+    required=True,
 )
 async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     if not ctx.member.permissions.kick_members:
@@ -39,7 +42,10 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
 # ====== /ban ======
 @interactions.slash_command(name="ban", description="Ban a user")
 @interactions.slash_option(
-    name="user", description="User to ban", opt_type=interactions.OptionType.USER, required=True
+    name="user",
+    description="User to ban",
+    opt_type=interactions.OptionType.USER,
+    required=True,
 )
 async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     if not ctx.member.permissions.ban_members:
@@ -54,7 +60,10 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
 # ====== /purge ======
 @interactions.slash_command(name="purge", description="Delete messages in a channel")
 @interactions.slash_option(
-    name="amount", description="Number of messages to delete", opt_type=interactions.OptionType.INTEGER, required=True
+    name="amount",
+    description="Number of messages to delete",
+    opt_type=interactions.OptionType.INTEGER,
+    required=True,
 )
 async def purge(ctx: interactions.SlashContext, amount: int):
     if not ctx.member.permissions.manage_messages:
@@ -69,27 +78,7 @@ async def purge(ctx: interactions.SlashContext, amount: int):
     except Exception as e:
         await ctx.send(f"Failed to delete messages: {e}", ephemeral=True)
 
-# ====== Helper: Split or upload long messages ======
-MAX_CHARS = 2000
-
-def split_response(text):
-    return [text[i:i + MAX_CHARS] for i in range(0, len(text), MAX_CHARS)]
-
-def upload_to_pastebin(content):
-    data = {
-        "api_dev_key": PASTEBIN_API_KEY,
-        "api_option": "paste",
-        "api_paste_code": content,
-        "api_paste_private": 1,
-        "api_paste_expire_date": "1D",
-        "api_paste_name": "AI Response"
-    }
-    response = requests.post("https://pastebin.com/api/api_post.php", data=data)
-    if response.status_code == 200:
-        return response.text
-    return None
-
-# ====== /ask (OpenRouter) ======
+# ====== /ask (LLaMA via OpenRouter with Pastebin for long replies) ======
 @interactions.slash_command(name="ask", description="Ask LLaMA (via OpenRouter)")
 @interactions.slash_option(
     name="question",
@@ -108,10 +97,11 @@ async def ask(ctx: interactions.SlashContext, question: str):
     payload = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "system", "content": "You are a helpful assistant. Respond with full detail, include code or explanation as needed."},
             {"role": "user", "content": question}
         ],
-        "max_tokens": 2048
+        "max_tokens": 4096,
+        "temperature": 0.7
     }
 
     try:
@@ -124,14 +114,22 @@ async def ask(ctx: interactions.SlashContext, question: str):
         data = response.json()
         answer = data["choices"][0]["message"]["content"]
 
-        if len(answer) < MAX_CHARS:
+        if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            paste_url = upload_to_pastebin(answer)
-            if paste_url:
-                await ctx.send(f"📝 Answer too long! View it here:\n{paste_url}")
-            else:
-                await ctx.send("❌ Couldn't upload to Pastebin.", ephemeral=True)
+            # Upload to Pastebin
+            pastebin_data = {
+                'api_dev_key': PASTEBIN_API_KEY,
+                'api_option': 'paste',
+                'api_paste_code': answer,
+                'api_paste_name': f"Response to: {question[:50]}",
+                'api_paste_expire_date': '1D',
+                'api_paste_private': '1'
+            }
+            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
+            paste_url = paste_response.text
+
+            await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
 
     except Exception as e:
         await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
