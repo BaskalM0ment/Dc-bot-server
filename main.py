@@ -8,7 +8,7 @@ PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"))
 
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.AutoDefer()  # parentheses are REQUIRED here
+@interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -23,7 +23,6 @@ async def ask(ctx: interactions.SlashContext, question: str):
         "max_tokens": 2048,
         "temperature": 0.7,
     }
-
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -53,7 +52,6 @@ async def ask(ctx: interactions.SlashContext, question: str):
                 await ctx.send(f"📄 Response too long, view it here: {paste_url}")
             else:
                 await ctx.send(f"Failed to upload to Pastebin: {paste_url}", ephemeral=True)
-
     except Exception as e:
         await ctx.send(f"Error: {e}", ephemeral=True)
 
