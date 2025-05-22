@@ -1,15 +1,15 @@
 import os
 import requests
-import interactions
+from interactions import Client, slash_command, SlashContext
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-bot = interactions.Client(token=DISCORD_TOKEN)
+bot = Client(token=DISCORD_TOKEN)
 
-@bot.slash_command(name="ask", description="Ask LLaMA a question")
-async def ask(ctx: interactions.SlashContext, question: str):
+@slash_command(name="ask", description="Ask LLaMA a question")
+async def ask(ctx: SlashContext, question: str):
     await ctx.defer()
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
