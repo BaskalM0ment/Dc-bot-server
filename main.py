@@ -2,10 +2,19 @@ import os
 import time
 import requests
 import interactions
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+
+if not DISCORD_TOKEN:
+    logger.error("DISCORD_TOKEN is not set.")
+    exit(1)
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
@@ -82,7 +91,13 @@ async def ask(ctx: interactions.SlashContext, question: str):
             else:
                 await ctx.send(f"Failed to upload to Pastebin: {paste_url}", ephemeral=True)
     except Exception as e:
+        logger.exception("An error occurred while processing the ask command.")
         await ctx.send(f"Error: {e}", ephemeral=True)
 
 if __name__ == "__main__":
-    bot.start()
+    try:
+        logger.info("Starting the bot...")
+        bot.start()
+    except Exception as e:
+        logger.exception("An error occurred while starting the bot.")
+        exit(1)
