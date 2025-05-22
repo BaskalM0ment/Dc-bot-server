@@ -78,7 +78,7 @@ async def purge(ctx: interactions.SlashContext, amount: int):
     except Exception as e:
         await ctx.send(f"Failed to delete messages: {e}", ephemeral=True)
 
-# ====== /ask (LLaMA via OpenRouter with Pastebin for long replies) ======
+# ====== /ask (LLaMA via OpenRouter) ======
 @interactions.slash_command(name="ask", description="Ask LLaMA (via OpenRouter)")
 @interactions.slash_option(
     name="question",
@@ -111,35 +111,34 @@ async def ask(ctx: interactions.SlashContext, question: str):
             json=payload,
             timeout=60,
         )
-        response.raise_for_status()
         data = response.json()
         answer = data["choices"][0]["message"]["content"]
 
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            # Upload to Pastebin
+            # Debug print for Pastebin API key - remove or comment this out after verifying it works
+            print(f"Using Pastebin API Key: {PASTEBIN_API_KEY}")
+
             pastebin_data = {
                 'api_dev_key': PASTEBIN_API_KEY,
                 'api_option': 'paste',
                 'api_paste_code': answer,
                 'api_paste_name': f"Response to: {question[:50]}",
                 'api_paste_expire_date': '1D',
-                'api_paste_private': '1',
-                'api_user_key': '',  # optional, leave blank if no user key
+                'api_paste_private': '1'
             }
-            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data, timeout=15)
+            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
             paste_url = paste_response.text
+            print("Pastebin response:", paste_url)  # For debugging
+
             if paste_response.status_code == 200 and paste_url.startswith("http"):
                 await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
             else:
-                fallback_text = answer[:1900]
-                await ctx.send(f"⚠️ Could not upload to Pastebin. Showing partial response:\n{fallback_text}")
+                await ctx.send(f"⚠️ Could not upload to Pastebin. Showing partial response:\n{answer[:1900]}")
 
-    except requests.exceptions.RequestException as req_err:
-        await ctx.send(f"Network error when contacting OpenRouter or Pastebin: {req_err}", ephemeral=True)
     except Exception as e:
-        await ctx.send(f"OpenRouter or Pastebin error: {e}", ephemeral=True)
+        await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
 
 # ====== Start Bot ======
 if __name__ == "__main__":
