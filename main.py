@@ -1,12 +1,11 @@
-import interactions
 import os
 import requests
+import interactions
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-bot = interactions.Client(token=DISCORD_TOKEN)
+bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"))
 
 @bot.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.AutoDefer()
@@ -15,15 +14,17 @@ async def ask(ctx: interactions.SlashContext, question: str):
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
     }
+
     payload = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": question},
+            {"role": "user", "content": question}
         ],
         "max_tokens": 2048,
         "temperature": 0.7,
     }
+
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
