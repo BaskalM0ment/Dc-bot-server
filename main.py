@@ -2,20 +2,22 @@ import interactions
 import os
 import requests
 
+# Load environment variables
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
+# Initialize bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-# Slash option goes first, then slash_command, then AutoDefer
-@interactions.slash_option(
+# Define the /ask slash command
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.option(
     name="question",
     description="Your question to LLaMA",
     opt_type=interactions.OptionType.STRING,
     required=True,
 )
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
@@ -38,7 +40,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=60,
+            timeout=30,
         )
         response.raise_for_status()
         data = response.json()
@@ -48,24 +50,23 @@ async def ask(ctx: interactions.SlashContext, question: str):
             await ctx.send(answer)
         else:
             paste_data = {
-                'api_dev_key': PASTEBIN_API_KEY,
-                'api_option': 'paste',
-                'api_paste_code': answer,
-                'api_paste_name': f"Response to: {question[:50]}",
-                'api_paste_expire_date': '1D',
-                'api_paste_private': '1'
+                "api_dev_key": PASTEBIN_API_KEY,
+                "api_option": "paste",
+                "api_paste_code": answer,
+                "api_paste_name": f"Response to: {question[:50]}",
+                "api_paste_expire_date": "1D",
+                "api_paste_private": "1"
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
 
             if paste_url.startswith("http"):
-                await ctx.send(f"📄 Response too long: {paste_url}")
+                await ctx.send(f"📄 Response too long, view it here: {paste_url}")
             else:
-                await ctx.send(f"❌ Pastebin upload failed: {paste_url}", ephemeral=True)
+                await ctx.send(f"❌ Pastebin error: {paste_url}", ephemeral=True)
 
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
-
 
 # Start the bot
 if __name__ == "__main__":
