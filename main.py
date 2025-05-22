@@ -18,7 +18,7 @@ bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
 
 # ====== /ping ======
 @interactions.slash_command(name="ping", description="Check bot responsiveness")
-@interactions.AutoDefer()
+@interactions.AutoDefer
 async def ping(ctx: interactions.SlashContext):
     await ctx.send("Pong! 🏓")
 
@@ -30,10 +30,10 @@ async def ping(ctx: interactions.SlashContext):
     opt_type=interactions.OptionType.USER,
     required=True,
 )
-@interactions.AutoDefer()
+@interactions.AutoDefer
 async def kick(ctx: interactions.SlashContext, user: interactions.Member):
-    # Check if command issuer has permission to kick members
-    if not ctx.author.permissions_in(ctx.channel).kick_members:
+    # Check if the user has permission to kick members
+    if not ctx.member_permissions.kick_members:
         await ctx.send("❌ You don't have permission to kick members.", ephemeral=True)
         return
     try:
@@ -50,10 +50,10 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     opt_type=interactions.OptionType.USER,
     required=True,
 )
-@interactions.AutoDefer()
+@interactions.AutoDefer
 async def ban(ctx: interactions.SlashContext, user: interactions.Member):
-    # Check if command issuer has permission to ban members
-    if not ctx.author.permissions_in(ctx.channel).ban_members:
+    # Check if the user has permission to ban members
+    if not ctx.member_permissions.ban_members:
         await ctx.send("❌ You don't have permission to ban members.", ephemeral=True)
         return
     try:
@@ -70,10 +70,10 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     opt_type=interactions.OptionType.INTEGER,
     required=True,
 )
-@interactions.AutoDefer()
+@interactions.AutoDefer
 async def purge(ctx: interactions.SlashContext, amount: int):
-    # Check if command issuer has permission to manage messages
-    if not ctx.author.permissions_in(ctx.channel).manage_messages:
+    # Check if the user has permission to manage messages
+    if not ctx.member_permissions.manage_messages:
         await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
         return
     try:
@@ -86,15 +86,15 @@ async def purge(ctx: interactions.SlashContext, amount: int):
         await ctx.send(f"Failed to delete messages: {e}", ephemeral=True)
 
 # ====== /ask (LLaMA via OpenRouter) ======
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.slash_command(name="ask_llama", description="Ask LLaMA a question")
 @interactions.slash_option(
     name="question",
     description="Your question for the AI",
     opt_type=interactions.OptionType.STRING,
     required=True,
 )
-@interactions.AutoDefer()
-async def ask(ctx: interactions.SlashContext, question: str):
+@interactions.AutoDefer
+async def ask_llama(ctx: interactions.SlashContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
@@ -135,7 +135,11 @@ async def ask(ctx: interactions.SlashContext, question: str):
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
             paste_url = paste_response.text
 
-            await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
+            if paste_url.startswith("http"):
+                await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
+            else:
+                # If Pastebin returns an error message
+                await ctx.send(f"Failed to upload to Pastebin: {paste_url}", ephemeral=True)
 
     except Exception as e:
         await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
