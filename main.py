@@ -10,8 +10,9 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 bot = interactions.Client(token=DISCORD_TOKEN)
 
 user_cooldowns = {}
-COOLDOWN_SECONDS = 0  # Set to 0 for no cooldown
+COOLDOWN_SECONDS = 0  # Change this if you want a cooldown
 
+@bot.command()
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.slash_option(
     name="question",
@@ -19,7 +20,7 @@ COOLDOWN_SECONDS = 0  # Set to 0 for no cooldown
     opt_type=interactions.OptionType.STRING,
     required=True
 )
-@interactions.AutoDefer()  # <-- THIS MUST BE LAST
+@interactions.AutoDefer()  # ✅ MUST be the last decorator
 async def ask(ctx: interactions.SlashContext, question: str):
     user_id = ctx.author.id
     now = time.time()
