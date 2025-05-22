@@ -9,7 +9,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 bot = interactions.Client(token=DISCORD_TOKEN)
 
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.AutoDefer()
+@interactions.AutoDefer()  # <-- NOTE the parentheses here!
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -54,6 +54,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
                 await ctx.send(f"📄 Response too long, view it here: {paste_url}")
             else:
                 await ctx.send(f"Failed to upload to Pastebin: {paste_url}", ephemeral=True)
+
     except Exception as e:
         await ctx.send(f"Error: {e}", ephemeral=True)
 
