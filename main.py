@@ -8,7 +8,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-@bot.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
