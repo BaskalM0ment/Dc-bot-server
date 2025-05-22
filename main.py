@@ -3,40 +3,45 @@ import time
 import requests
 import interactions
 
+# Environment variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
+# Init bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
+# Cooldown dictionary
 user_cooldowns = {}
-COOLDOWN_SECONDS = 0  # Change this if you want a cooldown
+COOLDOWN_SECONDS = 0  # Set to 0 to allow unlimited usage
 
-@bot.command()
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.slash_option(
     name="question",
     description="Your question to LLaMA",
+    required=True,
     opt_type=interactions.OptionType.STRING,
-    required=True
 )
-@interactions.AutoDefer()  # ✅ MUST be the last decorator
+@interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
     user_id = ctx.author.id
     now = time.time()
     last_used = user_cooldowns.get(user_id, 0)
+
     if now - last_used < COOLDOWN_SECONDS:
         await ctx.send(
-            f"⏳ Wait {int(COOLDOWN_SECONDS - (now - last_used))}s before asking again.",
-            ephemeral=True,
+            f"⏳ Please wait {int(COOLDOWN_SECONDS - (now - last_used))} seconds before asking again.",
+            ephemeral=True
         )
         return
+
     user_cooldowns[user_id] = now
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
     }
+
     payload = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
@@ -71,11 +76,14 @@ async def ask(ctx: interactions.SlashContext, question: str):
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
+
             if paste_url.startswith("http"):
-                await ctx.send(f"📄 Too long, view here: {paste_url}")
+                await ctx.send(f"📄 Response too long. View it here: {paste_url}")
             else:
-                await ctx.send(f"❌ Pastebin failed: {paste_url}", ephemeral=True)
+                await ctx.send(f"❌ Failed to upload to Pastebin: {paste_url}", ephemeral=True)
+
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
+# Start the bot
 bot.start()
