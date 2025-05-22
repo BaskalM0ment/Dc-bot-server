@@ -2,22 +2,20 @@ import interactions
 import os
 import requests
 
-# Load API keys from environment
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Initialize bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+# Slash option goes first, then slash_command, then AutoDefer
 @interactions.slash_option(
     name="question",
-    description="Your question to the AI",
+    description="Your question to LLaMA",
     opt_type=interactions.OptionType.STRING,
-    required=True
+    required=True,
 )
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
@@ -49,7 +47,6 @@ async def ask(ctx: interactions.SlashContext, question: str):
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            # Upload to Pastebin
             paste_data = {
                 'api_dev_key': PASTEBIN_API_KEY,
                 'api_option': 'paste',
@@ -62,20 +59,12 @@ async def ask(ctx: interactions.SlashContext, question: str):
             paste_url = paste_response.text
 
             if paste_url.startswith("http"):
-                await ctx.send(f"📄 Response too long, view it here: {paste_url}")
+                await ctx.send(f"📄 Response too long: {paste_url}")
             else:
-                await ctx.send(f"⚠️ Pastebin error: {paste_url}", ephemeral=True)
+                await ctx.send(f"❌ Pastebin upload failed: {paste_url}", ephemeral=True)
 
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
-
-
-# Slash command to clear all old registered commands
-@interactions.slash_command(name="clear", description="Clear all old slash commands (admin only)")
-@interactions.AutoDefer()
-async def clear(ctx: interactions.SlashContext):
-    await bot.sync_commands(delete_commands=True)
-    await ctx.send("✅ Old slash commands cleared.")
 
 
 # Start the bot
