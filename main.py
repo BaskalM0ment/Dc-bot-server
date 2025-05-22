@@ -9,18 +9,8 @@ PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 bot = interactions.Client(token=DISCORD_TOKEN)
 
 
-@bot.command(
-    name="ask",
-    description="Ask LLaMA a question",
-    options=[
-        interactions.Option(
-            name="question",
-            description="Your question to LLaMA",
-            type=interactions.OptionType.STRING,
-            required=True,
-        )
-    ]
-)
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.option()
 @interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
