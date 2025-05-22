@@ -111,6 +111,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
             json=payload,
             timeout=60,
         )
+        response.raise_for_status()
         data = response.json()
         answer = data["choices"][0]["message"]["content"]
 
@@ -124,15 +125,21 @@ async def ask(ctx: interactions.SlashContext, question: str):
                 'api_paste_code': answer,
                 'api_paste_name': f"Response to: {question[:50]}",
                 'api_paste_expire_date': '1D',
-                'api_paste_private': '1'
+                'api_paste_private': '1',
+                'api_user_key': '',  # optional, leave blank if no user key
             }
-            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
+            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data, timeout=15)
             paste_url = paste_response.text
+            if paste_response.status_code == 200 and paste_url.startswith("http"):
+                await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
+            else:
+                fallback_text = answer[:1900]
+                await ctx.send(f"⚠️ Could not upload to Pastebin. Showing partial response:\n{fallback_text}")
 
-            await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
-
+    except requests.exceptions.RequestException as req_err:
+        await ctx.send(f"Network error when contacting OpenRouter or Pastebin: {req_err}", ephemeral=True)
     except Exception as e:
-        await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
+        await ctx.send(f"OpenRouter or Pastebin error: {e}", ephemeral=True)
 
 # ====== Start Bot ======
 if __name__ == "__main__":
