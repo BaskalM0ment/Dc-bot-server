@@ -16,34 +16,24 @@ intents = (
 # Initialize the bot client with your Discord token and intents
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
 
-
-# Sync commands on startup to avoid "command outdated" errors
-@bot.event
-async def on_start():
-    print("Bot is starting... Syncing commands.")
-    await bot.sync_commands()
-    print("Commands synced successfully.")
-
-
 # ====== /ping ======
 @interactions.slash_command(name="ping", description="Check bot responsiveness")
-@interactions.autodefer()
+@interactions.AutoDefer()
 async def ping(ctx: interactions.SlashContext):
     await ctx.send("Pong! 🏓")
 
-
 # ====== /kick ======
 @interactions.slash_command(name="kick", description="Kick a user")
-@interactions.autodefer()
 @interactions.slash_option(
     name="user",
     description="User to kick",
     opt_type=interactions.OptionType.USER,
     required=True,
 )
+@interactions.AutoDefer()
 async def kick(ctx: interactions.SlashContext, user: interactions.Member):
-    # Check if author has kick permissions
-    if not ctx.member.permissions.kick_members:
+    # Check if command issuer has permission to kick members
+    if not ctx.author.permissions_in(ctx.channel).kick_members:
         await ctx.send("❌ You don't have permission to kick members.", ephemeral=True)
         return
     try:
@@ -52,19 +42,18 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     except Exception as e:
         await ctx.send(f"Failed to kick user: {e}", ephemeral=True)
 
-
 # ====== /ban ======
 @interactions.slash_command(name="ban", description="Ban a user")
-@interactions.autodefer()
 @interactions.slash_option(
     name="user",
     description="User to ban",
     opt_type=interactions.OptionType.USER,
     required=True,
 )
+@interactions.AutoDefer()
 async def ban(ctx: interactions.SlashContext, user: interactions.Member):
-    # Check if author has ban permissions
-    if not ctx.member.permissions.ban_members:
+    # Check if command issuer has permission to ban members
+    if not ctx.author.permissions_in(ctx.channel).ban_members:
         await ctx.send("❌ You don't have permission to ban members.", ephemeral=True)
         return
     try:
@@ -73,19 +62,18 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     except Exception as e:
         await ctx.send(f"Failed to ban user: {e}", ephemeral=True)
 
-
 # ====== /purge ======
 @interactions.slash_command(name="purge", description="Delete messages in a channel")
-@interactions.autodefer()
 @interactions.slash_option(
     name="amount",
     description="Number of messages to delete",
     opt_type=interactions.OptionType.INTEGER,
     required=True,
 )
+@interactions.AutoDefer()
 async def purge(ctx: interactions.SlashContext, amount: int):
-    # Check if author has manage_messages permissions
-    if not ctx.member.permissions.manage_messages:
+    # Check if command issuer has permission to manage messages
+    if not ctx.author.permissions_in(ctx.channel).manage_messages:
         await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
         return
     try:
@@ -97,16 +85,15 @@ async def purge(ctx: interactions.SlashContext, amount: int):
     except Exception as e:
         await ctx.send(f"Failed to delete messages: {e}", ephemeral=True)
 
-
 # ====== /ask (LLaMA via OpenRouter) ======
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.autodefer()
 @interactions.slash_option(
     name="question",
     description="Your question for the AI",
     opt_type=interactions.OptionType.STRING,
     required=True,
 )
+@interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -136,7 +123,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            # Upload to Pastebin if too long
+            # Upload to Pastebin
             pastebin_data = {
                 'api_dev_key': PASTEBIN_API_KEY,
                 'api_option': 'paste',
@@ -152,7 +139,6 @@ async def ask(ctx: interactions.SlashContext, question: str):
 
     except Exception as e:
         await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
-
 
 # ====== Start Bot ======
 if __name__ == "__main__":
