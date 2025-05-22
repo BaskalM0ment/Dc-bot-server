@@ -6,77 +6,61 @@ import requests
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
-# Define Discord intents
-intents = (
-    interactions.Intents.GUILDS
-    | interactions.Intents.GUILD_MESSAGES
-    | interactions.Intents.GUILD_MEMBERS
-)
-
-# Initialize the bot client with your Discord token and intents
+# Set up bot
+intents = interactions.Intents.DEFAULT | interactions.Intents.GUILD_MEMBERS | interactions.Intents.MESSAGE_CONTENT
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
 
-# --- Helper: Safely fetch guild member and check permission ---
-async def has_permission(ctx: interactions.SlashContext, perm: str) -> bool:
-    """
-    Returns True if the member (or fetched member) has the specified guild permission.
-    perm: the permission name as a string (e.g., "kick_members", "ban_members", "manage_messages")
-    """
-    member = ctx.member
-    # If ctx.member is not fully populated, fetch the member from the guild.
-    if not member or not hasattr(member, "guild_permissions"):
-        try:
-            member = await ctx.guild.fetch_member(ctx.user.id)
-        except Exception:
-            return False
-    # Check the guild_permissions attribute
-    if hasattr(member, "guild_permissions"):
-        return getattr(member.guild_permissions, perm, False)
-    return False
 
 # ====== /ping ======
 @interactions.slash_command(name="ping", description="Check bot responsiveness")
 async def ping(ctx: interactions.SlashContext):
     await ctx.send("Pong! 🏓")
 
+
 # ====== /kick ======
-@interactions.slash_command(name="kick", description="Kick a user")
+@interactions.slash_command(name="kick", description="Kick a user from the server")
 @interactions.slash_option(
-    name="user",
-    description="User to kick",
+    name="member",
+    description="The member to kick",
     opt_type=interactions.OptionType.USER,
-    required=True,
+    required=True
 )
-async def kick(ctx: interactions.SlashContext, user: interactions.Member):
-    if not await has_permission(ctx, "kick_members"):
+async def kick(ctx: interactions.SlashContext, member: interactions.User):
+    guild = await ctx.get_guild()
+    target = await guild.fetch_member(member.id)
+    if not ctx.author.guild_permissions.kick_members:
         await ctx.send("❌ You don't have permission to kick members.", ephemeral=True)
         return
     try:
-        await user.kick()
-        await ctx.send(f"👢 {user.user.username} has been kicked.")
+        await target.kick()
+        await ctx.send(f"👢 {target.user.username} has been kicked.")
     except Exception as e:
-        await ctx.send(f"Failed to kick user: {e}", ephemeral=True)
+        await ctx.send(f"Failed to kick member: {e}", ephemeral=True)
+
 
 # ====== /ban ======
-@interactions.slash_command(name="ban", description="Ban a user")
+@interactions.slash_command(name="ban", description="Ban a user from the server")
 @interactions.slash_option(
-    name="user",
-    description="User to ban",
+    name="member",
+    description="The member to ban",
     opt_type=interactions.OptionType.USER,
-    required=True,
+    required=True
 )
-async def ban(ctx: interactions.SlashContext, user: interactions.Member):
-    if not await has_permission(ctx, "ban_members"):
+async def ban(ctx: interactions.SlashContext, member: interactions.User):
+    guild = await ctx.get_guild()
+    target = await guild.fetch_member(member.id)
+    if not ctx.author.guild_permissions.ban_members:
         await ctx.send("❌ You don't have permission to ban members.", ephemeral=True)
         return
     try:
-        await user.ban()
-        await ctx.send(f"⛔ {user.user.username} has been banned.")
+        await target.ban()
+        await ctx.send(f"⛔ {target.user.username} has been banned.")
     except Exception as e:
-        await ctx.send(f"Failed to ban user: {e}", ephemeral=True)
+        await ctx.send(f"Failed to ban member: {e}", ephemeral=True)
+
 
 # ====== /purge ======
-@interactions.slash_command(name="purge", description="Delete messages in a channel")
+@interactions.slash_command(name="purge", description="Delete messages from a channel")
 @interactions.slash_option(
     name="amount",
     description="Number of messages to delete",
@@ -84,55 +68,53 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def purge(ctx: interactions.SlashContext, amount: int):
-    if not await has_permission(ctx, "manage_messages"):
+    if not ctx.author.guild_permissions.manage_messages:
         await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
         return
     try:
-        deleted_count = 0
+        deleted = 0
         async for message in ctx.channel.history(limit=amount):
             await message.delete()
-            deleted_count += 1
-        await ctx.send(f"🧹 Deleted {deleted_count} messages.", ephemeral=True)
+            deleted += 1
+        await ctx.send(f"🧹 Deleted {deleted} messages.", ephemeral=True)
     except Exception as e:
-        await ctx.send(f"Failed to delete messages: {e}", ephemeral=True)
+        await ctx.send(f"Failed to purge messages: {e}", ephemeral=True)
 
-# ====== /ask (LLaMA via OpenRouter) ======
+
+# ====== /ask ======
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.slash_option(
     name="question",
-    description="Your question for the AI",
+    description="Your question for LLaMA",
     opt_type=interactions.OptionType.STRING,
     required=True,
 )
 async def ask(ctx: interactions.SlashContext, question: str):
     await ctx.defer()
+
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
+
     payload = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant. Respond with full detail, include code or explanation as needed."},
+            {"role": "system", "content": "You are a helpful assistant. Respond with detail."},
             {"role": "user", "content": question}
         ],
         "max_tokens": 4096,
         "temperature": 0.7
     }
+
     try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=60,
-        )
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=60)
         data = response.json()
         answer = data["choices"][0]["message"]["content"]
 
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            # Upload to Pastebin
             pastebin_data = {
                 'api_dev_key': PASTEBIN_API_KEY,
                 'api_option': 'paste',
@@ -141,16 +123,13 @@ async def ask(ctx: interactions.SlashContext, question: str):
                 'api_paste_expire_date': '1D',
                 'api_paste_private': '1'
             }
-            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data, timeout=15)
-            paste_url = paste_response.text
-            if paste_response.status_code == 200 and paste_url.startswith("http"):
-                await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
-            else:
-                await ctx.send(f"⚠️ Could not upload to Pastebin. Showing partial response:\n{answer[:1900]}")
+            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
+            await ctx.send(f"📄 Too long! View the full response here: {paste_response.text}")
 
     except Exception as e:
         await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
 
-# ====== Start Bot ======
+
+# Start the bot
 if __name__ == "__main__":
     bot.start()
