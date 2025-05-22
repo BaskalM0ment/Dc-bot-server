@@ -17,6 +17,16 @@ intents = (
 # Initialize the bot client with your Discord token and intents
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
 
+# Helper function to safely check member permissions
+async def has_permission(ctx: interactions.SlashContext, permission_name: str) -> bool:
+    member = ctx.member
+    if not isinstance(member, Member):
+        try:
+            member = await ctx.guild.fetch_member(ctx.user.id)
+        except Exception:
+            return False
+    return getattr(member.permissions, permission_name, False)
+
 # ====== /ping ======
 @interactions.slash_command(name="ping", description="Check bot responsiveness")
 async def ping(ctx: interactions.SlashContext):
@@ -31,7 +41,7 @@ async def ping(ctx: interactions.SlashContext):
     required=True,
 )
 async def kick(ctx: interactions.SlashContext, user: interactions.Member):
-    if not isinstance(ctx.member, Member) or not ctx.member.permissions.kick_members:
+    if not await has_permission(ctx, "kick_members"):
         await ctx.send("❌ You don't have permission to kick members.", ephemeral=True)
         return
     try:
@@ -49,7 +59,7 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def ban(ctx: interactions.SlashContext, user: interactions.Member):
-    if not isinstance(ctx.member, Member) or not ctx.member.permissions.ban_members:
+    if not await has_permission(ctx, "ban_members"):
         await ctx.send("❌ You don't have permission to ban members.", ephemeral=True)
         return
     try:
@@ -67,7 +77,7 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def purge(ctx: interactions.SlashContext, amount: int):
-    if not isinstance(ctx.member, Member) or not ctx.member.permissions.manage_messages:
+    if not await has_permission(ctx, "manage_messages"):
         await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
         return
     try:
