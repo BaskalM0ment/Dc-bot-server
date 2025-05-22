@@ -8,16 +8,18 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Bot client
+# Initialize bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-# Cooldown dictionary
+# Cooldown settings
 user_cooldowns = {}
 COOLDOWN_SECONDS = 0  # Set to 0 to disable cooldown
 
-# Register the slash command properly
-@bot.command()
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+# Correct slash command definition
+@interactions.slash_command(
+    name="ask",
+    description="Ask LLaMA a question"
+)
 @interactions.slash_option(
     name="question",
     description="Your question to LLaMA",
@@ -37,8 +39,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
         return
 
     user_cooldowns[user_id] = now
-
-    await ctx.defer()  # Defer inside the coroutine
+    await ctx.defer()
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
