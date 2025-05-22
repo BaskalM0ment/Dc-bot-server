@@ -1,7 +1,6 @@
 import interactions
 import os
 import requests
-from interactions import Member
 
 # Load API keys from environment variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -14,18 +13,8 @@ intents = (
     | interactions.Intents.GUILD_MEMBERS
 )
 
-# Initialize the bot client with your Discord token and intents
+# Initialize the bot client
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
-
-# Helper function to safely check member permissions
-async def has_permission(ctx: interactions.SlashContext, permission_name: str) -> bool:
-    member = ctx.member
-    if not isinstance(member, Member):
-        try:
-            member = await ctx.guild.fetch_member(ctx.user.id)
-        except Exception:
-            return False
-    return getattr(member.permissions, permission_name, False)
 
 # ====== /ping ======
 @interactions.slash_command(name="ping", description="Check bot responsiveness")
@@ -41,7 +30,7 @@ async def ping(ctx: interactions.SlashContext):
     required=True,
 )
 async def kick(ctx: interactions.SlashContext, user: interactions.Member):
-    if not await has_permission(ctx, "kick_members"):
+    if not ctx.member or not ctx.member.guild_permissions.kick_members:
         await ctx.send("❌ You don't have permission to kick members.", ephemeral=True)
         return
     try:
@@ -59,7 +48,7 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def ban(ctx: interactions.SlashContext, user: interactions.Member):
-    if not await has_permission(ctx, "ban_members"):
+    if not ctx.member or not ctx.member.guild_permissions.ban_members:
         await ctx.send("❌ You don't have permission to ban members.", ephemeral=True)
         return
     try:
@@ -77,7 +66,7 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def purge(ctx: interactions.SlashContext, amount: int):
-    if not await has_permission(ctx, "manage_messages"):
+    if not ctx.member or not ctx.member.guild_permissions.manage_messages:
         await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
         return
     try:
@@ -140,7 +129,10 @@ async def ask(ctx: interactions.SlashContext, question: str):
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
             paste_url = paste_response.text
 
-            await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
+            if "Bad API request" in paste_url:
+                await ctx.send("⚠️ Failed to upload to Pastebin. Response was too long to display.")
+            else:
+                await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
 
     except Exception as e:
         await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
