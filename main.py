@@ -5,10 +5,13 @@ import requests
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
-bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"))
+# Enable default intents + direct messages intent
+intents = interactions.Intents.DEFAULT | interactions.Intents.DIRECT_MESSAGES
 
-@interactions.AutoDefer()  # Must be first (on top)
+bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
+
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.AutoDefer()  # defer to give time for processing
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -57,6 +60,12 @@ async def ask(ctx: interactions.SlashContext, question: str):
 
     except Exception as e:
         await ctx.send(f"Error: {e}", ephemeral=True)
+
+# Debug listener to confirm DM commands reach the bot
+@bot.event
+async def on_interaction_create(interaction):
+    if interaction.guild_id is None:  # Means DM
+        print(f"Received DM interaction: {interaction.data.get('name')} from {interaction.user.username}")
 
 if __name__ == "__main__":
     bot.start()
