@@ -9,7 +9,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 bot = interactions.Client(token=DISCORD_TOKEN)
 
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.AutoDefer()  # <-- NOTE the parentheses here!
+@interactions.AutoDefer()  # <-- MUST have parentheses
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -24,7 +24,6 @@ async def ask(ctx: interactions.SlashContext, question: str):
         "max_tokens": 2048,
         "temperature": 0.7,
     }
-
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -35,7 +34,6 @@ async def ask(ctx: interactions.SlashContext, question: str):
         response.raise_for_status()
         data = response.json()
         answer = data["choices"][0]["message"]["content"]
-
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
@@ -49,12 +47,10 @@ async def ask(ctx: interactions.SlashContext, question: str):
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
-
             if paste_url.startswith("http"):
                 await ctx.send(f"📄 Response too long, view it here: {paste_url}")
             else:
                 await ctx.send(f"Failed to upload to Pastebin: {paste_url}", ephemeral=True)
-
     except Exception as e:
         await ctx.send(f"Error: {e}", ephemeral=True)
 
