@@ -1,2 +1,2 @@
-interactions.py==5.13.2
+interactions.py==5.15.0rc1
 requests
