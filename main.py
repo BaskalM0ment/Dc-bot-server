@@ -8,21 +8,22 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Init bot
+# Bot client
 bot = interactions.Client(token=DISCORD_TOKEN)
 
 # Cooldown dictionary
 user_cooldowns = {}
-COOLDOWN_SECONDS = 0  # Set to 0 to allow unlimited usage
+COOLDOWN_SECONDS = 0  # Set to 0 to disable cooldown
 
+# Register the slash command properly
+@bot.command()
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.slash_option(
     name="question",
     description="Your question to LLaMA",
     required=True,
-    opt_type=interactions.OptionType.STRING,
+    opt_type=interactions.OptionType.STRING
 )
-@interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
     user_id = ctx.author.id
     now = time.time()
@@ -37,6 +38,8 @@ async def ask(ctx: interactions.SlashContext, question: str):
 
     user_cooldowns[user_id] = now
 
+    await ctx.defer()  # Defer inside the coroutine
+
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
@@ -46,7 +49,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": question},
+            {"role": "user", "content": question}
         ],
         "max_tokens": 2048,
         "temperature": 0.7,
@@ -57,7 +60,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=30,
+            timeout=30
         )
         response.raise_for_status()
         data = response.json()
@@ -67,12 +70,12 @@ async def ask(ctx: interactions.SlashContext, question: str):
             await ctx.send(answer)
         else:
             paste_data = {
-                "api_dev_key": PASTEBIN_API_KEY,
-                "api_option": "paste",
-                "api_paste_code": answer,
-                "api_paste_name": f"Response to: {question[:50]}",
-                "api_paste_expire_date": "1D",
-                "api_paste_private": "1",
+                'api_dev_key': PASTEBIN_API_KEY,
+                'api_option': 'paste',
+                'api_paste_code': answer,
+                'api_paste_name': f"Response to: {question[:50]}",
+                'api_paste_expire_date': '1D',
+                'api_paste_private': '1'
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
@@ -80,7 +83,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
             if paste_url.startswith("http"):
                 await ctx.send(f"📄 Response too long. View it here: {paste_url}")
             else:
-                await ctx.send(f"❌ Failed to upload to Pastebin: {paste_url}", ephemeral=True)
+                await ctx.send(f"❌ Pastebin upload failed: {paste_url}", ephemeral=True)
 
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
