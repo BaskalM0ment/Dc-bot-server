@@ -10,11 +10,17 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 bot = interactions.Client(token=DISCORD_TOKEN)
 
 user_cooldowns = {}
-COOLDOWN_SECONDS = 0  # Set to any value for cooldown in seconds
+COOLDOWN_SECONDS = 0  # Set your desired cooldown (in seconds)
 
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.option(
+    name="question",
+    description="Your question to LLaMA",
+    opt_type=interactions.OptionType.STRING,
+    required=True
+)
 @interactions.AutoDefer()
-async def ask(ctx: interactions.SlashContext, question: interactions.Option(str, "Your question to LLaMA")):
+async def ask(ctx: interactions.SlashContext, question: str):
     user_id = ctx.author.id
     now = time.time()
     last_used = user_cooldowns.get(user_id, 0)
