@@ -1,5 +1,5 @@
-import os
 import interactions
+import os
 import requests
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -19,7 +19,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": question}
+            {"role": "user", "content": question},
         ],
         "max_tokens": 2048,
         "temperature": 0.7,
@@ -48,10 +48,12 @@ async def ask(ctx: interactions.SlashContext, question: str):
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
+
             if paste_url.startswith("http"):
                 await ctx.send(f"📄 Response too long, view it here: {paste_url}")
             else:
                 await ctx.send(f"Failed to upload to Pastebin: {paste_url}", ephemeral=True)
+
     except Exception as e:
         await ctx.send(f"Error: {e}", ephemeral=True)
 
