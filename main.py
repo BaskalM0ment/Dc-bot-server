@@ -1,16 +1,35 @@
 import os
+import time
 import requests
-from interactions import Client, slash_command, SlashContext
+import interactions
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-bot = Client(token=DISCORD_TOKEN)
+bot = interactions.Client(token=DISCORD_TOKEN)
 
-@slash_command(name="ask", description="Ask LLaMA a question")
-async def ask(ctx: SlashContext, question: str):
-    await ctx.defer()
+user_cooldowns = {}
+COOLDOWN_SECONDS = 30  # Cooldown per user in seconds
+
+@bot.command()
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.option()
+@interactions.AutoDefer()
+async def ask(ctx: interactions.SlashContext, question: str):
+    user_id = str(ctx.author.id)
+    now = time.time()
+    last_used = user_cooldowns.get(user_id, 0)
+
+    if now - last_used < COOLDOWN_SECONDS:
+        await ctx.send(
+            f"⏳ Please wait {int(COOLDOWN_SECONDS - (now - last_used))} seconds before asking again.",
+            ephemeral=True
+        )
+        return
+
+    user_cooldowns[user_id] = now
+
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
@@ -24,6 +43,7 @@ async def ask(ctx: SlashContext, question: str):
         "max_tokens": 2048,
         "temperature": 0.7,
     }
+
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -34,6 +54,7 @@ async def ask(ctx: SlashContext, question: str):
         response.raise_for_status()
         data = response.json()
         answer = data["choices"][0]["message"]["content"]
+
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
