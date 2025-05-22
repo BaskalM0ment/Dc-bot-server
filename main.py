@@ -10,9 +10,9 @@ PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 # Initialize bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-# Define the /ask slash command
+# Define the /ask command
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.option(
+@interactions.slash_option(
     name="question",
     description="Your question to LLaMA",
     opt_type=interactions.OptionType.STRING,
