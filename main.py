@@ -8,9 +8,9 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.AutoDefer()  # <-- MUST have parentheses
+@bot.slash_command(name="ask", description="Ask LLaMA a question")
 async def ask(ctx: interactions.SlashContext, question: str):
+    await ctx.defer()  # manually defer at the start
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
