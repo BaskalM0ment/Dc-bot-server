@@ -1,3 +1,2 @@
 interactions.py==5.13.2
 requests
-python-dotenv
