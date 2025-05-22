@@ -1,6 +1,7 @@
 import interactions
 import os
 import requests
+from interactions import Member
 
 # Load API keys from environment variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -30,7 +31,7 @@ async def ping(ctx: interactions.SlashContext):
     required=True,
 )
 async def kick(ctx: interactions.SlashContext, user: interactions.Member):
-    if not ctx.member.permissions.kick_members:
+    if not isinstance(ctx.member, Member) or not ctx.member.permissions.kick_members:
         await ctx.send("❌ You don't have permission to kick members.", ephemeral=True)
         return
     try:
@@ -48,7 +49,7 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def ban(ctx: interactions.SlashContext, user: interactions.Member):
-    if not ctx.member.permissions.ban_members:
+    if not isinstance(ctx.member, Member) or not ctx.member.permissions.ban_members:
         await ctx.send("❌ You don't have permission to ban members.", ephemeral=True)
         return
     try:
@@ -66,7 +67,7 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def purge(ctx: interactions.SlashContext, amount: int):
-    if not ctx.member.permissions.manage_messages:
+    if not isinstance(ctx.member, Member) or not ctx.member.permissions.manage_messages:
         await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
         return
     try:
@@ -117,9 +118,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            # Debug print for Pastebin API key - remove or comment this out after verifying it works
-            print(f"Using Pastebin API Key: {PASTEBIN_API_KEY}")
-
+            # Upload to Pastebin
             pastebin_data = {
                 'api_dev_key': PASTEBIN_API_KEY,
                 'api_option': 'paste',
@@ -130,12 +129,8 @@ async def ask(ctx: interactions.SlashContext, question: str):
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
             paste_url = paste_response.text
-            print("Pastebin response:", paste_url)  # For debugging
 
-            if paste_response.status_code == 200 and paste_url.startswith("http"):
-                await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
-            else:
-                await ctx.send(f"⚠️ Could not upload to Pastebin. Showing partial response:\n{answer[:1900]}")
+            await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
 
     except Exception as e:
         await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
