@@ -12,7 +12,6 @@ bot = interactions.Client(token=DISCORD_TOKEN)
 user_cooldowns = {}
 COOLDOWN_SECONDS = 30  # Cooldown per user in seconds
 
-@bot.command()
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.option()
 @interactions.AutoDefer()
