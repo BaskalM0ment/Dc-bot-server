@@ -10,7 +10,7 @@ bot = interactions.Client(token=DISCORD_TOKEN)
 
 @bot.slash_command(name="ask", description="Ask LLaMA a question")
 async def ask(ctx: interactions.SlashContext, question: str):
-    await ctx.defer()  # manually defer at the start
+    await ctx.defer()
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
