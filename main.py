@@ -6,20 +6,20 @@ import requests
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
-# Discord Intents
 intents = (
     interactions.Intents.GUILDS
     | interactions.Intents.GUILD_MESSAGES
     | interactions.Intents.GUILD_MEMBERS
 )
 
-# Bot Initialization
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
+
 
 # ====== /ping ======
 @interactions.slash_command(name="ping", description="Check bot responsiveness")
 async def ping(ctx: interactions.SlashContext):
     await ctx.send("Pong! 🏓")
+
 
 # ====== /kick ======
 @interactions.slash_command(name="kick", description="Kick a user")
@@ -40,6 +40,7 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     except Exception as e:
         await ctx.send(f"Failed to kick user: {e}", ephemeral=True)
 
+
 # ====== /ban ======
 @interactions.slash_command(name="ban", description="Ban a user")
 @interactions.slash_option(
@@ -59,6 +60,7 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     except Exception as e:
         await ctx.send(f"Failed to ban user: {e}", ephemeral=True)
 
+
 # ====== /purge ======
 @interactions.slash_command(name="purge", description="Delete messages in a channel")
 @interactions.slash_option(
@@ -72,6 +74,7 @@ async def purge(ctx: interactions.SlashContext, amount: int):
     if not ctx.member.permissions.has("MANAGE_MESSAGES"):
         await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
         return
+
     try:
         messages = await ctx.channel.history(limit=amount)
         for msg in messages:
@@ -80,7 +83,8 @@ async def purge(ctx: interactions.SlashContext, amount: int):
     except Exception as e:
         await ctx.send(f"Error purging messages: {e}", ephemeral=True)
 
-# ====== /ask llama a question ======
+
+# ====== /ask ======
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.slash_option(
     name="question",
@@ -98,7 +102,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
     payload = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant. Respond with full detail."},
+            {"role": "system", "content": "You are a helpful assistant. Respond with full detail, include code or explanation as needed."},
             {"role": "user", "content": question}
         ],
         "max_tokens": 4096,
@@ -118,21 +122,21 @@ async def ask(ctx: interactions.SlashContext, question: str):
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            # Upload long answers to Pastebin
-            pastebin_data = {
+            paste_data = {
                 'api_dev_key': PASTEBIN_API_KEY,
                 'api_option': 'paste',
                 'api_paste_code': answer,
-                'api_paste_name': f"Response to: {question[:50]}",
+                'api_paste_name': f"Answer to: {question[:50]}",
                 'api_paste_expire_date': '1D',
                 'api_paste_private': '1'
             }
-            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
+            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
+            await ctx.send(f"📄 Response too long. View it here: {paste_url}")
 
-            await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
     except Exception as e:
         await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
+
 
 # ====== Start Bot ======
 if __name__ == "__main__":
