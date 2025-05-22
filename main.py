@@ -19,7 +19,7 @@ COOLDOWN_SECONDS = 0  # Set to 0 for no cooldown
     opt_type=interactions.OptionType.STRING,
     required=True
 )
-@interactions.AutoDefer()
+@interactions.AutoDefer()  # <-- THIS MUST BE LAST
 async def ask(ctx: interactions.SlashContext, question: str):
     user_id = ctx.author.id
     now = time.time()
