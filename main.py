@@ -4,13 +4,12 @@ import interactions
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-bot = interactions.Client(token=DISCORD_TOKEN)
+bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"))
 
 @bot.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.AutoDefer()  # Correct usage with parentheses
-async def ask(ctx: interactions.SlashContext, question: str):
+@interactions.AutoDefer()
+async def ask(ctx: interactions.CommandContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
@@ -20,7 +19,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": question},
+            {"role": "user", "content": question}
         ],
         "max_tokens": 2048,
         "temperature": 0.7,
