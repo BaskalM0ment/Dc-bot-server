@@ -90,7 +90,7 @@ async def purge(ctx: interactions.SlashContext, amount: int):
         await ctx.send(f"Failed to delete messages: {e}", ephemeral=True)
 
 # ====== /ask (LLaMA via OpenRouter) ======
-@interactions.slash_command(name="ask", description="Ask LLaMA (via OpenRouter)")
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.slash_option(
     name="question",
     description="Your question for the AI",
