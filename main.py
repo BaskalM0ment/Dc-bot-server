@@ -4,12 +4,13 @@ import interactions
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
-bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"))
+bot = interactions.Client(token=DISCORD_TOKEN)
 
 @bot.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.AutoDefer()
-async def ask(ctx: interactions.CommandContext, question: str):
+async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
