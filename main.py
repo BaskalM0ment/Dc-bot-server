@@ -2,21 +2,24 @@ import interactions
 import os
 import requests
 
-# Load environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
-# Initialize the bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-# Define the slash command and its option
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.slash_option(
-    name="question",
-    description="Your question to LLaMA",
-    opt_type=interactions.OptionType.STRING,
-    required=True,
+
+@bot.command(
+    name="ask",
+    description="Ask LLaMA a question",
+    options=[
+        interactions.Option(
+            name="question",
+            description="Your question to LLaMA",
+            type=interactions.OptionType.STRING,
+            required=True,
+        )
+    ]
 )
 @interactions.AutoDefer()
 async def ask(ctx: interactions.SlashContext, question: str):
@@ -68,6 +71,5 @@ async def ask(ctx: interactions.SlashContext, question: str):
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
-# Run the bot
-if __name__ == "__main__":
-    bot.start()
+
+bot.start()
