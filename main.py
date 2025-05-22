@@ -13,8 +13,26 @@ intents = (
     | interactions.Intents.GUILD_MEMBERS
 )
 
-# Initialize the bot client
+# Initialize the bot client with your Discord token and intents
 bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"), intents=intents)
+
+# --- Helper: Safely fetch guild member and check permission ---
+async def has_permission(ctx: interactions.SlashContext, perm: str) -> bool:
+    """
+    Returns True if the member (or fetched member) has the specified guild permission.
+    perm: the permission name as a string (e.g., "kick_members", "ban_members", "manage_messages")
+    """
+    member = ctx.member
+    # If ctx.member is not fully populated, fetch the member from the guild.
+    if not member or not hasattr(member, "guild_permissions"):
+        try:
+            member = await ctx.guild.fetch_member(ctx.user.id)
+        except Exception:
+            return False
+    # Check the guild_permissions attribute
+    if hasattr(member, "guild_permissions"):
+        return getattr(member.guild_permissions, perm, False)
+    return False
 
 # ====== /ping ======
 @interactions.slash_command(name="ping", description="Check bot responsiveness")
@@ -30,7 +48,7 @@ async def ping(ctx: interactions.SlashContext):
     required=True,
 )
 async def kick(ctx: interactions.SlashContext, user: interactions.Member):
-    if not ctx.member or not ctx.member.guild_permissions.kick_members:
+    if not await has_permission(ctx, "kick_members"):
         await ctx.send("❌ You don't have permission to kick members.", ephemeral=True)
         return
     try:
@@ -48,7 +66,7 @@ async def kick(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def ban(ctx: interactions.SlashContext, user: interactions.Member):
-    if not ctx.member or not ctx.member.guild_permissions.ban_members:
+    if not await has_permission(ctx, "ban_members"):
         await ctx.send("❌ You don't have permission to ban members.", ephemeral=True)
         return
     try:
@@ -66,7 +84,7 @@ async def ban(ctx: interactions.SlashContext, user: interactions.Member):
     required=True,
 )
 async def purge(ctx: interactions.SlashContext, amount: int):
-    if not ctx.member or not ctx.member.guild_permissions.manage_messages:
+    if not await has_permission(ctx, "manage_messages"):
         await ctx.send("❌ You don't have permission to manage messages.", ephemeral=True)
         return
     try:
@@ -88,12 +106,10 @@ async def purge(ctx: interactions.SlashContext, amount: int):
 )
 async def ask(ctx: interactions.SlashContext, question: str):
     await ctx.defer()
-
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
-
     payload = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
@@ -103,7 +119,6 @@ async def ask(ctx: interactions.SlashContext, question: str):
         "max_tokens": 4096,
         "temperature": 0.7
     }
-
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -126,13 +141,12 @@ async def ask(ctx: interactions.SlashContext, question: str):
                 'api_paste_expire_date': '1D',
                 'api_paste_private': '1'
             }
-            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data)
+            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=pastebin_data, timeout=15)
             paste_url = paste_response.text
-
-            if "Bad API request" in paste_url:
-                await ctx.send("⚠️ Failed to upload to Pastebin. Response was too long to display.")
-            else:
+            if paste_response.status_code == 200 and paste_url.startswith("http"):
                 await ctx.send(f"📄 The response is too long. View it here: {paste_url}")
+            else:
+                await ctx.send(f"⚠️ Could not upload to Pastebin. Showing partial response:\n{answer[:1900]}")
 
     except Exception as e:
         await ctx.send(f"OpenRouter error: {e}", ephemeral=True)
