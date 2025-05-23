@@ -2,6 +2,7 @@ import os
 import time
 import requests
 import interactions
+import asyncio
 
 # Environment variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -89,6 +90,9 @@ async def ask(ctx: interactions.SlashContext, question: str):
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
-# Start the bot
-bot.start()
+# Start the bot with command sync
+async def main():
+    await bot.sync_commands(delete=True)  # Remove old /image command
+    await bot.start()
 
+asyncio.run(main())
