@@ -9,9 +9,9 @@ PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@bot.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.slash_option(name="question", description="Your question to LLaMA", opt_type=interactions.OptionType.STRING, required=True)
-@interactions.AutoDefer()
+@interactions.AutoDefer  # <-- NO parentheses here
 async def ask(ctx: interactions.SlashContext, question: str):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -55,9 +55,9 @@ async def ask(ctx: interactions.SlashContext, question: str):
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
 
-@interactions.slash_command(name="imagine", description="Generate an image with DALL·E")
+@bot.slash_command(name="imagine", description="Generate an image with DALL·E")
 @interactions.slash_option(name="prompt", description="Describe the image", opt_type=interactions.OptionType.STRING, required=True)
-@interactions.AutoDefer()
+@interactions.AutoDefer  # <-- NO parentheses here either
 async def imagine(ctx: interactions.SlashContext, prompt: str):
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
