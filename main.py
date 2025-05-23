@@ -1,6 +1,7 @@
 import os
 import requests
 import interactions
+from interactions.ext.slash_commands import Option, OptionType  # <-- ADD THIS
 
 # Load tokens from environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -29,10 +30,10 @@ def paste_to_pastebin(text: str) -> str:
     name="ask",
     description="Ask LLaMA a question",
     options=[
-        interactions.Option(
+        Option(
             name="question",
             description="Your question to LLaMA",
-            type=interactions.OptionType.STRING,
+            type=OptionType.STRING,
             required=True,
         )
     ],
@@ -65,10 +66,10 @@ async def ask(ctx: interactions.SlashContext, question: str):
     name="image",
     description="Generate an image with DALL·E",
     options=[
-        interactions.Option(
+        Option(
             name="prompt",
             description="Image description",
-            type=interactions.OptionType.STRING,
+            type=OptionType.STRING,
             required=True,
         )
     ],
