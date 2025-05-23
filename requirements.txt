@@ -1,3 +1,2 @@
-interactions.py
+interactions.py==4.10.0
 requests
-aiohttp
