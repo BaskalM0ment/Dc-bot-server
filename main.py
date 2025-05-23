@@ -1,51 +1,30 @@
 import os
-import time
 import requests
 import interactions
+from interactions import slash_command
+from interactions.ext.get_options import Option
 
-# Environment variables
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Initialize bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-# Cooldown settings
-user_cooldowns = {}
-COOLDOWN_SECONDS = 0  # Set to 0 to disable cooldown
 
-# Correct slash command definition
-@interactions.slash_command(
+@slash_command(
     name="ask",
     description="Ask LLaMA a question"
 )
-@interactions.slash_option(
-    name="question",
-    description="Your question to LLaMA",
-    required=True,
-    opt_type=interactions.OptionType.STRING
-)
-async def ask(ctx: interactions.SlashContext, question: str):
-    user_id = ctx.author.id
-    now = time.time()
-    last_used = user_cooldowns.get(user_id, 0)
-
-    if now - last_used < COOLDOWN_SECONDS:
-        await ctx.send(
-            f"⏳ Please wait {int(COOLDOWN_SECONDS - (now - last_used))} seconds before asking again.",
-            ephemeral=True
-        )
-        return
-
-    user_cooldowns[user_id] = now
+async def ask(
+    ctx: interactions.CommandContext,
+    question: Option(str, "Your question to LLaMA")
+):
     await ctx.defer()
-
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
     }
-
     payload = {
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
@@ -61,7 +40,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=30
+            timeout=30,
         )
         response.raise_for_status()
         data = response.json()
@@ -80,14 +59,48 @@ async def ask(ctx: interactions.SlashContext, question: str):
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
-
             if paste_url.startswith("http"):
-                await ctx.send(f"📄 Response too long. View it here: {paste_url}")
+                await ctx.send(f"📄 Response too long, view it here: {paste_url}")
             else:
-                await ctx.send(f"❌ Pastebin upload failed: {paste_url}", ephemeral=True)
-
+                await ctx.send(f"Failed to upload to Pastebin: {paste_url}", ephemeral=True)
     except Exception as e:
-        await ctx.send(f"❌ Error: {e}", ephemeral=True)
+        await ctx.send(f"Error generating response: {e}", ephemeral=True)
 
-# Start the bot
-bot.start()
+
+@slash_command(
+    name="imagine",
+    description="Generate an AI image with DALL·E"
+)
+async def imagine(
+    ctx: interactions.CommandContext,
+    prompt: Option(str, "Describe the image you want")
+):
+    await ctx.defer()
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "prompt": prompt,
+        "n": 1,
+        "size": "1024x1024"
+    }
+
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/images/generations",
+            headers=headers,
+            json=payload,
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+        image_url = data["data"][0]["url"]
+        await ctx.send(image_url)
+    except Exception as e:
+        await ctx.send(f"Error generating image: {e}", ephemeral=True)
+
+
+if __name__ == "__main__":
+    bot.start()
