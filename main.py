@@ -11,14 +11,14 @@ bot = interactions.Client(token=DISCORD_TOKEN)
 
 
 @interactions.slash_command(name="ask", description="Ask LLaMA a question")
-async def ask(ctx: interactions.SlashContext, question: str = interactions.slash_option(
+@interactions.slash_option(
     name="question",
     description="Your question to LLaMA",
     required=True,
     opt_type=interactions.OptionType.STRING
-)):
+)
+async def ask(ctx: interactions.SlashContext, question: str):
     await ctx.defer()
-
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -46,25 +46,25 @@ async def ask(ctx: interactions.SlashContext, question: str = interactions.slash
                 "api_dev_key": PASTEBIN_API_KEY,
                 "api_option": "paste",
                 "api_paste_code": answer,
-                "api_paste_name": f"Ask result",
+                "api_paste_name": "Ask result",
                 "api_paste_expire_date": "1D",
                 "api_paste_private": "1"
             })
-            await ctx.send(f"📄 Response was too long. View it here: {paste.text}")
+            await ctx.send(f"📄 Response too long: {paste.text}")
 
     except Exception as e:
         await ctx.send(f"Error: {e}", ephemeral=True)
 
 
 @interactions.slash_command(name="imagine", description="Generate an AI image")
-async def imagine(ctx: interactions.SlashContext, prompt: str = interactions.slash_option(
+@interactions.slash_option(
     name="prompt",
     description="Prompt for the image",
     required=True,
     opt_type=interactions.OptionType.STRING
-)):
+)
+async def imagine(ctx: interactions.SlashContext, prompt: str):
     await ctx.defer()
-
     try:
         response = requests.post(
             "https://api.openai.com/v1/images/generations",
@@ -81,7 +81,7 @@ async def imagine(ctx: interactions.SlashContext, prompt: str = interactions.sla
         )
         response.raise_for_status()
         image_url = response.json()["data"][0]["url"]
-        await ctx.send(f"🖼️ Image generated: {image_url}")
+        await ctx.send(f"🖼️ Image: {image_url}")
     except Exception as e:
         await ctx.send(f"Error generating image: {e}", ephemeral=True)
 
