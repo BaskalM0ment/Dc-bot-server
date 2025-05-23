@@ -1,17 +1,15 @@
 import os
 import requests
 import interactions
-from interactions import OptionType
-from interactions.ext.paginators import Paginator
 
-# Load tokens from env vars
+# Load tokens from environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
-bot = interactions.Client()
+bot = interactions.Client(token=DISCORD_TOKEN)
 
-# Helper: paste long text to Pastebin and return URL
+# Helper: Upload long responses to Pastebin
 def paste_to_pastebin(text: str) -> str:
     url = "https://pastebin.com/api/api_post.php"
     data = {
@@ -27,14 +25,19 @@ def paste_to_pastebin(text: str) -> str:
     else:
         return "Failed to upload to Pastebin."
 
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.slash_option(
-    name="question",
-    description="Your question to LLaMA",
-    opt_type=OptionType.STRING,
-    required=True,
+@bot.command(
+    name="ask",
+    description="Ask LLaMA a question",
+    options=[
+        interactions.Option(
+            name="question",
+            description="Your question to LLaMA",
+            type=interactions.OptionType.STRING,
+            required=True,
+        )
+    ],
 )
-async def ask(ctx: interactions.SlashContext, question: str):
+async def ask(ctx: interactions.CommandContext, question: str):
     await ctx.defer()
     try:
         headers = {
@@ -55,18 +58,22 @@ async def ask(ctx: interactions.SlashContext, question: str):
             await ctx.send(f"Answer too long, posted to Pastebin: {paste_url}")
         else:
             await ctx.send(answer)
-
     except Exception as e:
         await ctx.send(f"Error: {str(e)}")
 
-@interactions.slash_command(name="image", description="Generate an image with DALL·E")
-@interactions.slash_option(
-    name="prompt",
-    description="Image description",
-    opt_type=OptionType.STRING,
-    required=True,
+@bot.command(
+    name="image",
+    description="Generate an image with DALL·E",
+    options=[
+        interactions.Option(
+            name="prompt",
+            description="Image description",
+            type=interactions.OptionType.STRING,
+            required=True,
+        )
+    ],
 )
-async def image(ctx: interactions.SlashContext, prompt: str):
+async def image(ctx: interactions.CommandContext, prompt: str):
     await ctx.defer()
     try:
         headers = {
@@ -87,4 +94,4 @@ async def image(ctx: interactions.SlashContext, prompt: str):
         await ctx.send(f"Error generating image: {str(e)}")
 
 if __name__ == "__main__":
-    bot.start(DISCORD_TOKEN)
+    bot.start()
