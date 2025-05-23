@@ -74,9 +74,9 @@ async def ask(ctx: interactions.SlashContext, question: str):
                 'api_dev_key': PASTEBIN_API_KEY,
                 'api_option': 'paste',
                 'api_paste_code': answer,
-                'api_paste_name': f"Response to: {question[:50]}",
+                'api_paste_private': '1',
                 'api_paste_expire_date': '1D',
-                'api_paste_private': '1'
+                'api_paste_name': f"LLaMA response",
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
