@@ -1,22 +1,23 @@
 import os
 import requests
 import interactions
+from interactions import slash_command, Option
 
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-# /ask command to query LLaMA on OpenRouter
-@bot.slash_command(
+
+@slash_command(
     name="ask",
     description="Ask LLaMA a question"
 )
 async def ask(
     ctx: interactions.CommandContext,
-    question: interactions.Option(str, "Your question to LLaMA")
+    question: Option(str, "Your question to LLaMA")
 ):
     await ctx.defer()
     headers = {
@@ -32,6 +33,7 @@ async def ask(
         "max_tokens": 2048,
         "temperature": 0.7,
     }
+
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -61,41 +63,43 @@ async def ask(
             else:
                 await ctx.send(f"Failed to upload to Pastebin: {paste_url}", ephemeral=True)
     except Exception as e:
-        await ctx.send(f"Error: {e}", ephemeral=True)
+        await ctx.send(f"Error generating response: {e}", ephemeral=True)
 
-# /imagine command to generate AI images using OpenAI DALL·E
-@bot.slash_command(
+
+@slash_command(
     name="imagine",
-    description="Generate an AI image from a prompt"
+    description="Generate an AI image with DALL·E"
 )
 async def imagine(
     ctx: interactions.CommandContext,
-    prompt: interactions.Option(str, "Describe the image you want to generate")
+    prompt: Option(str, "Describe the image you want")
 ):
     await ctx.defer()
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "prompt": prompt,
+        "n": 1,
+        "size": "1024x1024"
+    }
+
     try:
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json",
-        }
-        data = {
-            "model": "dall-e-3",
-            "prompt": prompt,
-            "n": 1,
-            "size": "1024x1024"
-        }
         response = requests.post(
             "https://api.openai.com/v1/images/generations",
             headers=headers,
-            json=data,
+            json=payload,
             timeout=30,
         )
         response.raise_for_status()
-        res_json = response.json()
-        image_url = res_json["data"][0]["url"]
+        data = response.json()
+        image_url = data["data"][0]["url"]
         await ctx.send(image_url)
     except Exception as e:
         await ctx.send(f"Error generating image: {e}", ephemeral=True)
+
 
 if __name__ == "__main__":
     bot.start()
