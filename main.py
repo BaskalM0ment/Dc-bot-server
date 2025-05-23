@@ -1,14 +1,15 @@
 import os
 import requests
 import interactions
-from interactions.ext.get_options import Option, OptionType
+from interactions import OptionType
+from interactions.ext.paginators import Paginator
 
 # Load tokens from env vars
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
-bot = interactions.Client(token=DISCORD_TOKEN)
+bot = interactions.Client()
 
 # Helper: paste long text to Pastebin and return URL
 def paste_to_pastebin(text: str) -> str:
@@ -26,22 +27,16 @@ def paste_to_pastebin(text: str) -> str:
     else:
         return "Failed to upload to Pastebin."
 
-@bot.command(
-    name="ask",
-    description="Ask LLaMA a question",
-    options=[
-        Option(
-            name="question",
-            description="Your question to LLaMA",
-            type=OptionType.STRING,
-            required=True,
-        )
-    ],
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.slash_option(
+    name="question",
+    description="Your question to LLaMA",
+    opt_type=OptionType.STRING,
+    required=True,
 )
-async def ask(ctx: interactions.CommandContext, question: str):
-    await ctx.defer()  # defer response as it might take time
+async def ask(ctx: interactions.SlashContext, question: str):
+    await ctx.defer()
     try:
-        # Call your LLaMA API (example using OpenRouter with OpenAI key)
         headers = {
             "Authorization": f"Bearer {OPENAI_API_KEY}",
             "Content-Type": "application/json",
@@ -55,7 +50,6 @@ async def ask(ctx: interactions.CommandContext, question: str):
         resp.raise_for_status()
         answer = resp.json()["choices"][0]["message"]["content"]
 
-        # If answer too long, paste to Pastebin
         if len(answer) > 1900:
             paste_url = paste_to_pastebin(answer)
             await ctx.send(f"Answer too long, posted to Pastebin: {paste_url}")
@@ -65,19 +59,14 @@ async def ask(ctx: interactions.CommandContext, question: str):
     except Exception as e:
         await ctx.send(f"Error: {str(e)}")
 
-@bot.command(
-    name="image",
-    description="Generate an image with DALL·E",
-    options=[
-        Option(
-            name="prompt",
-            description="Image description",
-            type=OptionType.STRING,
-            required=True,
-        )
-    ],
+@interactions.slash_command(name="image", description="Generate an image with DALL·E")
+@interactions.slash_option(
+    name="prompt",
+    description="Image description",
+    opt_type=OptionType.STRING,
+    required=True,
 )
-async def image(ctx: interactions.CommandContext, prompt: str):
+async def image(ctx: interactions.SlashContext, prompt: str):
     await ctx.defer()
     try:
         headers = {
@@ -98,4 +87,4 @@ async def image(ctx: interactions.CommandContext, prompt: str):
         await ctx.send(f"Error generating image: {str(e)}")
 
 if __name__ == "__main__":
-    bot.start()
+    bot.start(DISCORD_TOKEN)
