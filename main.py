@@ -1,8 +1,8 @@
 import os
 import aiohttp
 import interactions
+from interactions import slash_command, slash_option, OptionType, auto_defer
 
-# Initialize bot client
 bot = interactions.Client(token=os.getenv("DISCORD_BOT_TOKEN"))
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -18,10 +18,7 @@ HEADERS_PASTEBIN = {
     "X-API-Key": PASTEBIN_API_KEY,
 }
 
-# Helper: Upload long text to Pastebin (assuming https://pastebin.com/api/api_post.php style)
 async def upload_to_pastebin(text: str) -> str:
-    # Adjust according to your pastebin provider API
-    # Here is a dummy example with https://pastebin.com/api documentation
     url = "https://pastebin.com/api/api_post.php"
     data = {
         "api_dev_key": PASTEBIN_API_KEY,
@@ -33,40 +30,34 @@ async def upload_to_pastebin(text: str) -> str:
     async with aiohttp.ClientSession() as session:
         async with session.post(url, data=data) as resp:
             if resp.status == 200:
-                link = await resp.text()
-                return link
+                return await resp.text()
             else:
                 return "Failed to upload to Pastebin."
 
-# /ask command: send question, get AI response (simulate LLaMA here)
-@bot.slash_command(name="ask", description="Ask LLaMA a question")
-@interactions.slash_option(
+@slash_command(name="ask", description="Ask LLaMA a question")
+@slash_option(
     name="question",
     description="Your question to LLaMA",
     required=True,
-    opt_type=interactions.OptionType.STRING,
+    opt_type=OptionType.STRING,
 )
-@interactions.auto_defer()
+@auto_defer()
 async def ask(ctx: interactions.SlashContext, question: str):
-    # Simulate AI response (replace with real API call)
     ai_response = f"Simulated AI response to your question:\n{question}\n" + ("More text. " * 100)
-
-    # If response is too long (>1500 chars), upload to Pastebin
     if len(ai_response) > 1500 and PASTEBIN_API_KEY:
         paste_link = await upload_to_pastebin(ai_response)
         await ctx.send(f"Response too long, uploaded to Pastebin: {paste_link}")
     else:
         await ctx.send(ai_response)
 
-# /image command: generate image using OpenAI DALL·E
-@bot.slash_command(name="image", description="Generate an AI image from prompt")
-@interactions.slash_option(
+@slash_command(name="image", description="Generate an AI image from prompt")
+@slash_option(
     name="prompt",
     description="Image prompt",
     required=True,
-    opt_type=interactions.OptionType.STRING,
+    opt_type=OptionType.STRING,
 )
-@interactions.auto_defer()
+@auto_defer()
 async def image(ctx: interactions.SlashContext, prompt: str):
     data = {
         "model": "dall-e-3",
@@ -88,5 +79,4 @@ async def image(ctx: interactions.SlashContext, prompt: str):
                 error_text = await resp.text()
                 await ctx.send(f"Error generating image: {resp.status} {error_text}")
 
-# Run the bot
 bot.start()
