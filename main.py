@@ -1,31 +1,30 @@
 import os
 import requests
 import interactions
-from interactions import Option, OptionType
+from interactions.ext.get_options import Option, OptionType
 
-bot = interactions.Client(token=os.getenv("DISCORD_TOKEN"))
-
+# Load tokens from env vars
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
-HEADERS = {
-    "Authorization": f"Bearer {OPENAI_API_KEY}",
-    "Content-Type": "application/json",
-}
+bot = interactions.Client(token=DISCORD_TOKEN)
 
-def pastebin_post(content: str, title="Paste") -> str:
+# Helper: paste long text to Pastebin and return URL
+def paste_to_pastebin(text: str) -> str:
+    url = "https://pastebin.com/api/api_post.php"
     data = {
         "api_dev_key": PASTEBIN_API_KEY,
         "api_option": "paste",
-        "api_paste_code": content,
-        "api_paste_name": title,
-        "api_paste_expire_date": "1W",
+        "api_paste_code": text,
+        "api_paste_expire_date": "10M",
+        "api_paste_format": "text",
     }
-    response = requests.post("https://pastebin.com/api/api_post.php", data=data)
-    if response.ok:
-        return response.text  # URL of paste
+    response = requests.post(url, data=data)
+    if response.status_code == 200:
+        return response.text
     else:
-        return None
+        return "Failed to upload to Pastebin."
 
 @bot.command(
     name="ask",
@@ -40,19 +39,31 @@ def pastebin_post(content: str, title="Paste") -> str:
     ],
 )
 async def ask(ctx: interactions.CommandContext, question: str):
-    await ctx.defer()
-    # Dummy LLaMA API call (replace with your actual LLaMA call)
-    # For demo: just echo question reversed
-    response_text = question[::-1]
+    await ctx.defer()  # defer response as it might take time
+    try:
+        # Call your LLaMA API (example using OpenRouter with OpenAI key)
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        json_data = {
+            "model": "llama-2-13b-chat",
+            "messages": [{"role": "user", "content": question}],
+            "max_tokens": 500,
+        }
+        resp = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=json_data)
+        resp.raise_for_status()
+        answer = resp.json()["choices"][0]["message"]["content"]
 
-    # If too long, upload to pastebin
-    if len(response_text) > 1900 and PASTEBIN_API_KEY:
-        paste_url = pastebin_post(response_text, title="LLaMA Response")
-        if paste_url:
-            await ctx.send(f"Response too long, posted to Pastebin: {paste_url}")
-            return
+        # If answer too long, paste to Pastebin
+        if len(answer) > 1900:
+            paste_url = paste_to_pastebin(answer)
+            await ctx.send(f"Answer too long, posted to Pastebin: {paste_url}")
+        else:
+            await ctx.send(answer)
 
-    await ctx.send(response_text)
+    except Exception as e:
+        await ctx.send(f"Error: {str(e)}")
 
 @bot.command(
     name="image",
@@ -60,7 +71,7 @@ async def ask(ctx: interactions.CommandContext, question: str):
     options=[
         Option(
             name="prompt",
-            description="Prompt for image generation",
+            description="Image description",
             type=OptionType.STRING,
             required=True,
         )
@@ -68,24 +79,23 @@ async def ask(ctx: interactions.CommandContext, question: str):
 )
 async def image(ctx: interactions.CommandContext, prompt: str):
     await ctx.defer()
-    json_data = {
-        "model": "dall-e-3",
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024",
-    }
     try:
-        response = requests.post(
-            "https://api.openai.com/v1/images/generations",
-            headers=HEADERS,
-            json=json_data,
-        )
-        response.raise_for_status()
-        data = response.json()
-        image_url = data["data"][0]["url"]
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        json_data = {
+            "model": "dall-e-3",
+            "prompt": prompt,
+            "n": 1,
+            "size": "1024x1024",
+        }
+        resp = requests.post("https://api.openai.com/v1/images/generations", headers=headers, json=json_data)
+        resp.raise_for_status()
+        image_url = resp.json()["data"][0]["url"]
         await ctx.send(image_url)
     except Exception as e:
-        await ctx.send(f"Error generating image: {e}")
+        await ctx.send(f"Error generating image: {str(e)}")
 
 if __name__ == "__main__":
     bot.start()
