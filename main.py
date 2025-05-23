@@ -1,7 +1,6 @@
 import os
 import requests
 import interactions
-from interactions import Option, OptionType, CommandContext
 
 # Load tokens from environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -26,19 +25,17 @@ def paste_to_pastebin(text: str) -> str:
     else:
         return "Failed to upload to Pastebin."
 
-@bot.command(
+@interactions.slash_command(
     name="ask",
     description="Ask LLaMA a question",
-    options=[
-        Option(
-            name="question",
-            description="Your question to LLaMA",
-            type=OptionType.STRING,
-            required=True,
-        )
-    ],
 )
-async def ask(ctx: CommandContext, question: str):
+@interactions.option(
+    name="question",
+    description="Your question to LLaMA",
+    opt_type=interactions.OptionType.STRING,
+    required=True,
+)
+async def ask(ctx: interactions.SlashContext, question: str):
     await ctx.defer()
     try:
         headers = {
@@ -62,19 +59,17 @@ async def ask(ctx: CommandContext, question: str):
     except Exception as e:
         await ctx.send(f"Error: {str(e)}")
 
-@bot.command(
+@interactions.slash_command(
     name="image",
     description="Generate an image with DALL·E",
-    options=[
-        Option(
-            name="prompt",
-            description="Image description",
-            type=OptionType.STRING,
-            required=True,
-        )
-    ],
 )
-async def image(ctx: CommandContext, prompt: str):
+@interactions.option(
+    name="prompt",
+    description="Image description",
+    opt_type=interactions.OptionType.STRING,
+    required=True,
+)
+async def image(ctx: interactions.SlashContext, prompt: str):
     await ctx.defer()
     try:
         headers = {
