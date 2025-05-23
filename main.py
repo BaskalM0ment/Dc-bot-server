@@ -25,19 +25,19 @@ def paste_to_pastebin(text: str) -> str:
     else:
         return "Failed to upload to Pastebin."
 
-@interactions.slash_command(
+@bot.slash_command(
     name="ask",
     description="Ask LLaMA a question",
     options=[
-        {
-            "name": "question",
-            "description": "Your question to LLaMA",
-            "type": interactions.OptionType.STRING,
-            "required": True,
-        }
+        interactions.Option(
+            name="question",
+            description="Your question to LLaMA",
+            type=interactions.OptionType.STRING,
+            required=True,
+        )
     ],
 )
-async def ask(ctx: interactions.CommandContext, question: str):
+async def ask(ctx: interactions.SlashContext, question: str):  # <-- fixed here
     await ctx.defer()
     try:
         headers = {
@@ -61,19 +61,19 @@ async def ask(ctx: interactions.CommandContext, question: str):
     except Exception as e:
         await ctx.send(f"Error: {str(e)}")
 
-@interactions.slash_command(
+@bot.slash_command(
     name="image",
     description="Generate an image with DALL·E",
     options=[
-        {
-            "name": "prompt",
-            "description": "Image description",
-            "type": interactions.OptionType.STRING,
-            "required": True,
-        }
+        interactions.Option(
+            name="prompt",
+            description="Image description",
+            type=interactions.OptionType.STRING,
+            required=True,
+        )
     ],
 )
-async def image(ctx: interactions.CommandContext, prompt: str):
+async def image(ctx: interactions.SlashContext, prompt: str):  # <-- fixed here
     await ctx.defer()
     try:
         headers = {
