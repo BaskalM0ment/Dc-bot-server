@@ -1,2 +1,2 @@
-interactions.py==5.13.2
-requests>=2.28.0
+interactions.py>=5.14.0
+requests
