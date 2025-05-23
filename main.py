@@ -1,7 +1,8 @@
 import os
 import requests
 import interactions
-from interactions import slash_command, Option
+from interactions import slash_command
+from interactions.ext.get_options import Option
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
