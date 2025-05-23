@@ -1,82 +1,70 @@
+import interactions
 import os
 import aiohttp
-import interactions
-from interactions import slash_command, slash_option, OptionType, auto_defer
 
-bot = interactions.Client(token=os.getenv("DISCORD_BOT_TOKEN"))
-
+TOKEN = os.getenv("DISCORD_TOKEN")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 
-HEADERS_OPENAI = {
-    "Authorization": f"Bearer {OPENAI_API_KEY}",
-    "Content-Type": "application/json",
-}
+bot = interactions.Client(token=TOKEN)
 
-HEADERS_PASTEBIN = {
-    "Content-Type": "application/json",
-    "X-API-Key": PASTEBIN_API_KEY,
-}
-
-async def upload_to_pastebin(text: str) -> str:
-    url = "https://pastebin.com/api/api_post.php"
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.option("question", str, description="Your question to LLaMA", required=True)
+@interactions.autodefer()
+async def ask(ctx: interactions.SlashContext, question: str):
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
     data = {
-        "api_dev_key": PASTEBIN_API_KEY,
-        "api_option": "paste",
-        "api_paste_code": text,
-        "api_paste_private": "1",
-        "api_paste_expire_date": "1D",
+        "model": "meta-llama/llama-3-70b-instruct",
+        "messages": [{"role": "user", "content": question}],
+        "temperature": 0.7
     }
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, data=data) as resp:
-            if resp.status == 200:
-                return await resp.text()
-            else:
-                return "Failed to upload to Pastebin."
+        async with session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data) as resp:
+            if resp.status != 200:
+                return await ctx.send(f"Error from OpenRouter: {resp.status}")
+            response = await resp.json()
+            message = response["choices"][0]["message"]["content"]
+    
+    if len(message) > 2000 and PASTEBIN_API_KEY:
+        paste_data = {
+            "api_dev_key": PASTEBIN_API_KEY,
+            "api_option": "paste",
+            "api_paste_code": question[:50],
+            "api_paste_private": "1",
+            "api_paste_expire_date": "10M",
+            "api_paste_format": "text",
+            "api_paste_code": message,
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.post("https://pastebin.com/api/api_post.php", data=paste_data) as paste_resp:
+                paste_link = await paste_resp.text()
+                return await ctx.send(f"Response too long. View it here: {paste_link}")
+    await ctx.send(message)
 
-@slash_command(name="ask", description="Ask LLaMA a question")
-@slash_option(
-    name="question",
-    description="Your question to LLaMA",
-    required=True,
-    opt_type=OptionType.STRING,
-)
-@auto_defer()
-async def ask(ctx: interactions.SlashContext, question: str):
-    ai_response = f"Simulated AI response to your question:\n{question}\n" + ("More text. " * 100)
-    if len(ai_response) > 1500 and PASTEBIN_API_KEY:
-        paste_link = await upload_to_pastebin(ai_response)
-        await ctx.send(f"Response too long, uploaded to Pastebin: {paste_link}")
-    else:
-        await ctx.send(ai_response)
-
-@slash_command(name="image", description="Generate an AI image from prompt")
-@slash_option(
-    name="prompt",
-    description="Image prompt",
-    required=True,
-    opt_type=OptionType.STRING,
-)
-@auto_defer()
-async def image(ctx: interactions.SlashContext, prompt: str):
+@interactions.slash_command(name="imagine", description="Generate an AI image from a prompt")
+@interactions.option("prompt", str, description="Describe the image", required=True)
+@interactions.autodefer()
+async def imagine(ctx: interactions.SlashContext, prompt: str):
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
     data = {
-        "model": "dall-e-3",
         "prompt": prompt,
         "n": 1,
         "size": "1024x1024"
     }
     async with aiohttp.ClientSession() as session:
-        async with session.post(
-            "https://api.openai.com/v1/images/generations",
-            headers=HEADERS_OPENAI,
-            json=data
-        ) as resp:
-            if resp.status == 200:
-                res_json = await resp.json()
-                image_url = res_json["data"][0]["url"]
-                await ctx.send(image_url)
-            else:
-                error_text = await resp.text()
-                await ctx.send(f"Error generating image: {resp.status} {error_text}")
+        async with session.post("https://api.openai.com/v1/images/generations", headers=headers, json=data) as resp:
+            if resp.status != 200:
+                error_details = await resp.text()
+                return await ctx.send(f"Error generating image: {resp.status}\n```{error_details}```")
+            response = await resp.json()
+            image_url = response["data"][0]["url"]
+            await ctx.send(image_url)
 
 bot.start()
