@@ -1,7 +1,15 @@
 import os
 import requests
 import interactions
-from interactions.ext.slash_commands import Option, OptionType  # <-- ADD THIS
+
+# Patch to define Option and OptionType if not found in interactions.ext.slash_commands
+try:
+    from interactions.ext.slash_commands import Option, OptionType
+except ModuleNotFoundError:
+    from interactions.api import slash_commands
+
+    Option = slash_commands.Option
+    OptionType = slash_commands.OptionType
 
 # Load tokens from environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
