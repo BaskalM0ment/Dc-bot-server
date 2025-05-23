@@ -1,8 +1,6 @@
 import os
 import requests
 import interactions
-from interactions import slash_command
-from interactions.ext.get_options import Option
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -12,15 +10,16 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 bot = interactions.Client(token=DISCORD_TOKEN)
 
 
-@slash_command(
-    name="ask",
-    description="Ask LLaMA a question"
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.slash_option(
+    name="question",
+    description="Your question to LLaMA",
+    opt_type=interactions.OptionType.STRING,
+    required=True
 )
-async def ask(
-    ctx: interactions.CommandContext,
-    question: Option(str, "Your question to LLaMA")
-):
+async def ask(ctx: interactions.SlashContext, question: str):
     await ctx.defer()
+
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
@@ -67,14 +66,14 @@ async def ask(
         await ctx.send(f"Error generating response: {e}", ephemeral=True)
 
 
-@slash_command(
-    name="imagine",
-    description="Generate an AI image with DALL·E"
+@interactions.slash_command(name="imagine", description="Generate an AI image with DALL·E")
+@interactions.slash_option(
+    name="prompt",
+    description="Describe the image you want",
+    opt_type=interactions.OptionType.STRING,
+    required=True
 )
-async def imagine(
-    ctx: interactions.CommandContext,
-    prompt: Option(str, "Describe the image you want")
-):
+async def imagine(ctx: interactions.SlashContext, prompt: str):
     await ctx.defer()
 
     headers = {
