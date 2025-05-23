@@ -25,7 +25,7 @@ def paste_to_pastebin(text: str) -> str:
     else:
         return "Failed to upload to Pastebin."
 
-@bot.command(
+@interactions.slash_command(
     name="ask",
     description="Ask LLaMA a question",
     options=[
@@ -61,7 +61,7 @@ async def ask(ctx: interactions.CommandContext, question: str):
     except Exception as e:
         await ctx.send(f"Error: {str(e)}")
 
-@bot.command(
+@interactions.slash_command(
     name="image",
     description="Generate an image with DALL·E",
     options=[
