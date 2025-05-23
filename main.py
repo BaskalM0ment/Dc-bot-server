@@ -1,6 +1,7 @@
 import os
 import requests
 import interactions
+from interactions import Option, OptionType, CommandContext
 
 # Load tokens from environment variables
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
@@ -29,15 +30,15 @@ def paste_to_pastebin(text: str) -> str:
     name="ask",
     description="Ask LLaMA a question",
     options=[
-        interactions.Option(
+        Option(
             name="question",
             description="Your question to LLaMA",
-            type=interactions.OptionType.STRING,
+            type=OptionType.STRING,
             required=True,
         )
     ],
 )
-async def ask(ctx: interactions.CommandContext, question: str):
+async def ask(ctx: CommandContext, question: str):
     await ctx.defer()
     try:
         headers = {
@@ -65,15 +66,15 @@ async def ask(ctx: interactions.CommandContext, question: str):
     name="image",
     description="Generate an image with DALL·E",
     options=[
-        interactions.Option(
+        Option(
             name="prompt",
             description="Image description",
-            type=interactions.OptionType.STRING,
+            type=OptionType.STRING,
             required=True,
         )
     ],
 )
-async def image(ctx: interactions.CommandContext, prompt: str):
+async def image(ctx: CommandContext, prompt: str):
     await ctx.defer()
     try:
         headers = {
