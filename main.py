@@ -2,22 +2,21 @@ import os
 import requests
 import interactions
 
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # For DALL·E image generation
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-
-@interactions.slash_command(
+@bot.slash_command(
     name="ask",
     description="Ask LLaMA a question",
 )
 @interactions.slash_option(
+    interactions.OptionType.STRING,
     name="question",
     description="Your question to LLaMA",
-    type=interactions.OptionType.STRING,
     required=True,
 )
 async def ask(ctx: interactions.CommandContext, question: str):
@@ -30,12 +29,11 @@ async def ask(ctx: interactions.CommandContext, question: str):
         "model": "meta-llama/llama-3-8b-instruct",
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": question},
+            {"role": "user", "content": question}
         ],
         "max_tokens": 2048,
         "temperature": 0.7,
     }
-
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -50,14 +48,13 @@ async def ask(ctx: interactions.CommandContext, question: str):
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            # Upload to Pastebin if answer too long
             paste_data = {
                 'api_dev_key': PASTEBIN_API_KEY,
                 'api_option': 'paste',
                 'api_paste_code': answer,
                 'api_paste_name': f"Response to: {question[:50]}",
                 'api_paste_expire_date': '1D',
-                'api_paste_private': '1',
+                'api_paste_private': '1'
             }
             paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
             paste_url = paste_response.text
@@ -68,15 +65,14 @@ async def ask(ctx: interactions.CommandContext, question: str):
     except Exception as e:
         await ctx.send(f"Error: {e}", ephemeral=True)
 
-
-@interactions.slash_command(
+@bot.slash_command(
     name="imagine",
     description="Generate an AI image with DALL·E",
 )
 @interactions.slash_option(
+    interactions.OptionType.STRING,
     name="prompt",
     description="Image description",
-    type=interactions.OptionType.STRING,
     required=True,
 )
 async def imagine(ctx: interactions.CommandContext, prompt: str):
@@ -91,7 +87,6 @@ async def imagine(ctx: interactions.CommandContext, prompt: str):
         "n": 1,
         "size": "1024x1024",
     }
-
     try:
         response = requests.post(
             "https://api.openai.com/v1/images/generations",
@@ -105,7 +100,6 @@ async def imagine(ctx: interactions.CommandContext, prompt: str):
         await ctx.send(image_url)
     except Exception as e:
         await ctx.send(f"Error generating image: {e}", ephemeral=True)
-
 
 if __name__ == "__main__":
     bot.start()
