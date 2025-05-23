@@ -11,11 +11,30 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 # Initialize bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-# Cooldown settings
+# Cooldown settings (set to 0 to disable cooldown)
 user_cooldowns = {}
-COOLDOWN_SECONDS = 0  # Set to 0 to disable cooldown
+COOLDOWN_SECONDS = 0
 
-# Correct slash command definition
+# Helper function: Upload long responses to Pastebin
+def paste_to_pastebin(text: str) -> str:
+    url = "https://pastebin.com/api/api_post.php"
+    data = {
+        "api_dev_key": PASTEBIN_API_KEY,
+        "api_option": "paste",
+        "api_paste_code": text,
+        "api_paste_expire_date": "10M",
+        "api_paste_format": "text",
+        "api_paste_private": "1",
+    }
+    response = requests.post(url, data=data)
+    if response.status_code == 200:
+        print(f"Pastebin response: {response.text}")  # Debug log
+        return response.text
+    else:
+        print(f"Pastebin failed with status {response.status_code}: {response.text}")  # Debug log
+        return "Failed to upload to Pastebin."
+
+# Slash command /ask
 @interactions.slash_command(
     name="ask",
     description="Ask LLaMA a question"
@@ -70,24 +89,14 @@ async def ask(ctx: interactions.SlashContext, question: str):
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            paste_data = {
-                'api_dev_key': PASTEBIN_API_KEY,
-                'api_option': 'paste',
-                'api_paste_code': answer,
-                'api_paste_private': '1',
-                'api_paste_expire_date': '1D',
-                'api_paste_name': f"LLaMA response",
-            }
-            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
-            paste_url = paste_response.text
-
+            paste_url = paste_to_pastebin(answer)
             if paste_url.startswith("http"):
                 await ctx.send(f"📄 Response too long. View it here: {paste_url}")
             else:
-                await ctx.send(f"❌ Pastebin upload failed: {paste_url}", ephemeral=True)
+                await ctx.send(f"❌ Pastebin upload failed. Response: {paste_url}", ephemeral=True)
 
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
-# Start the bot
-bot.start()
+if __name__ == "__main__":
+    bot.start()
