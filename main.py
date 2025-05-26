@@ -3,12 +3,16 @@ import time
 import requests
 import asyncio
 import interactions
+import base64
 
 # Environment variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY", "").strip()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
+
+# Print to confirm key is loaded properly (optional for debugging)
+print(f"OPENAI_API_KEY loaded: {repr(OPENAI_API_KEY)}")
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
@@ -17,10 +21,7 @@ user_cooldowns = {}
 COOLDOWN_SECONDS = 0  # Set to > 0 to enable cooldown
 
 # /ask command
-@interactions.slash_command(
-    name="ask",
-    description="Ask LLaMA a question"
-)
+@interactions.slash_command(name="ask", description="Ask LLaMA a question")
 @interactions.slash_option(
     name="question",
     description="Your question to LLaMA",
@@ -90,10 +91,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
 # /image command
-@interactions.slash_command(
-    name="image",
-    description="Generate an image using DALL·E"
-)
+@interactions.slash_command(name="image", description="Generate an image using DALL·E")
 @interactions.slash_option(
     name="prompt",
     description="Describe the image you want",
@@ -124,8 +122,8 @@ async def image(ctx: interactions.SlashContext, prompt: str):
         )
         response.raise_for_status()
         image_b64 = response.json()["data"][0]["b64_json"]
-
-        await ctx.send(file=interactions.File.from_base64(image_b64, filename="image.png"))
+        image_bytes = base64.b64decode(image_b64)
+        await ctx.send(file=interactions.File(file=image_bytes, file_name="image.png"))
 
     except Exception as e:
         await ctx.send(f"❌ Error generating image: {e}", ephemeral=True)
@@ -138,7 +136,7 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-async def run_bot():
-    await bot.astart(DISCORD_TOKEN)
+    async def run_bot():
+        await bot.astart(DISCORD_TOKEN)
 
-asyncio.run(run_bot())
+    asyncio.get_event_loop().run_until_complete(run_bot())
