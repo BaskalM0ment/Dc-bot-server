@@ -5,36 +5,19 @@ import interactions
 
 # Environment variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 # Initialize bot
 bot = interactions.Client(token=DISCORD_TOKEN)
 
-# Cooldown settings (set to 0 to disable cooldown)
+# Cooldown settings
 user_cooldowns = {}
-COOLDOWN_SECONDS = 0
+COOLDOWN_SECONDS = 0  # Set to 0 to disable cooldown
 
-# Helper function: Upload long responses to Pastebin
-def paste_to_pastebin(text: str) -> str:
-    url = "https://pastebin.com/api/api_post.php"
-    data = {
-        "api_dev_key": PASTEBIN_API_KEY,
-        "api_option": "paste",
-        "api_paste_code": text,
-        "api_paste_expire_date": "10M",
-        "api_paste_format": "text",
-        "api_paste_private": "1",
-    }
-    response = requests.post(url, data=data)
-    if response.status_code == 200:
-        print(f"Pastebin response: {response.text}")  # Debug log
-        return response.text
-    else:
-        print(f"Pastebin failed with status {response.status_code}: {response.text}")  # Debug log
-        return "Failed to upload to Pastebin."
 
-# Slash command /ask
+# /ask command
 @interactions.slash_command(
     name="ask",
     description="Ask LLaMA a question"
@@ -89,7 +72,17 @@ async def ask(ctx: interactions.SlashContext, question: str):
         if len(answer) < 1900:
             await ctx.send(answer)
         else:
-            paste_url = paste_to_pastebin(answer)
+            paste_data = {
+                'api_dev_key': PASTEBIN_API_KEY,
+                'api_option': 'paste',
+                'api_paste_code': answer,
+                'api_paste_name': f"Response to: {question[:50]}",
+                'api_paste_expire_date': '1D',
+                'api_paste_private': '1'
+            }
+            paste_response = requests.post("https://pastebin.com/api/api_post.php", data=paste_data)
+            paste_url = paste_response.text
+
             if paste_url.startswith("http"):
                 await ctx.send(f"📄 Response too long. View it here: {paste_url}")
             else:
@@ -98,5 +91,49 @@ async def ask(ctx: interactions.SlashContext, question: str):
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
+
+# /image command
+@interactions.slash_command(
+    name="image",
+    description="Generate an image with DALL·E 3"
+)
+@interactions.slash_option(
+    name="prompt",
+    description="Image description",
+    required=True,
+    opt_type=interactions.OptionType.STRING
+)
+async def image(ctx: interactions.SlashContext, prompt: str):
+    await ctx.defer()
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "dall-e-3",
+        "prompt": prompt,
+        "n": 1,
+        "size": "1024x1024",
+    }
+
+    try:
+        response = requests.post(
+            "https://api.openai.com/v1/images/generations",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        response.raise_for_status()
+        data = response.json()
+        image_url = data["data"][0]["url"]
+        await ctx.send(image_url)
+
+    except Exception as e:
+        await ctx.send(f"❌ Error generating image: {e}", ephemeral=True)
+
+
+# Start the bot
 if __name__ == "__main__":
     bot.start()
