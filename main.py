@@ -127,9 +127,13 @@ async def image(ctx: interactions.SlashContext, prompt: str):
     except Exception as e:
         await ctx.send(f"❌ Error generating image: {e}", ephemeral=True)
 
-# Bot entry point
-async def main():
-    await bot.start()
-
+# Bot entry point (with working async loop handling)
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        import nest_asyncio
+        nest_asyncio.apply()
+    except ImportError:
+        pass
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(bot.start())
