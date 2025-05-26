@@ -138,7 +138,7 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-    async def run_bot():
-        await bot.start()
+async def run_bot():
+    await bot.astart(DISCORD_TOKEN)
 
-    asyncio.run(run_bot())
+asyncio.run(run_bot())
