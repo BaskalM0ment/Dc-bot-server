@@ -5,10 +5,10 @@ import asyncio
 import interactions
 
 # Environment variables
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY", "").strip()
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
@@ -43,7 +43,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
     await ctx.defer()
 
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY.strip()}",
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
     }
 
@@ -104,7 +104,7 @@ async def image(ctx: interactions.SlashContext, prompt: str):
     await ctx.defer()
 
     headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY.strip()}",
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json",
     }
 
@@ -127,7 +127,7 @@ async def image(ctx: interactions.SlashContext, prompt: str):
     except Exception as e:
         await ctx.send(f"❌ Error generating image: {e}", ephemeral=True)
 
-# Bot entry point (with working async loop handling)
+# Fix event loop and run bot
 if __name__ == "__main__":
     try:
         import nest_asyncio
@@ -135,5 +135,6 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     loop.run_until_complete(bot.start())
