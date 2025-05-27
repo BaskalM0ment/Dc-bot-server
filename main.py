@@ -3,16 +3,12 @@ import time
 import requests
 import asyncio
 import interactions
-import base64
 
 # Environment variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+DEEPAI_API_KEY = os.getenv("DEEPAI_API_KEY", "").strip()
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY", "").strip()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
-
-# Print to confirm key is loaded properly (optional for debugging)
-print(f"OPENAI_API_KEY loaded: {repr(OPENAI_API_KEY)}")
 
 bot = interactions.Client(token=DISCORD_TOKEN)
 
@@ -21,7 +17,10 @@ user_cooldowns = {}
 COOLDOWN_SECONDS = 0  # Set to > 0 to enable cooldown
 
 # /ask command
-@interactions.slash_command(name="ask", description="Ask LLaMA a question")
+@interactions.slash_command(
+    name="ask",
+    description="Ask LLaMA a question"
+)
 @interactions.slash_option(
     name="question",
     description="Your question to LLaMA",
@@ -90,8 +89,11 @@ async def ask(ctx: interactions.SlashContext, question: str):
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
-# /image command
-@interactions.slash_command(name="image", description="Generate an image using DALL·E")
+# /image command using DeepAI
+@interactions.slash_command(
+    name="image",
+    description="Generate an image using DeepAI"
+)
 @interactions.slash_option(
     name="prompt",
     description="Describe the image you want",
@@ -102,28 +104,19 @@ async def image(ctx: interactions.SlashContext, prompt: str):
     await ctx.defer()
 
     headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json",
+        "api-key": DEEPAI_API_KEY
     }
 
-    json_data = {
-        "model": "dall-e-3",
-        "prompt": prompt,
-        "n": 1,
-        "size": "1024x1024",
-        "response_format": "b64_json"
+    data = {
+        "text": prompt
     }
 
     try:
-        response = requests.post(
-            "https://api.openai.com/v1/images/generations",
-            headers=headers,
-            json=json_data
-        )
+        response = requests.post("https://api.deepai.org/api/text2img", headers=headers, data=data)
         response.raise_for_status()
-        image_b64 = response.json()["data"][0]["b64_json"]
-        image_bytes = base64.b64decode(image_b64)
-        await ctx.send(file=interactions.File(file=image_bytes, file_name="image.png"))
+        image_url = response.json()["output_url"]
+
+        await ctx.send(image_url)
 
     except Exception as e:
         await ctx.send(f"❌ Error generating image: {e}", ephemeral=True)
@@ -136,7 +129,7 @@ if __name__ == "__main__":
     except ImportError:
         pass
 
-    async def run_bot():
-        await bot.astart(DISCORD_TOKEN)
+async def run_bot():
+    await bot.astart(DISCORD_TOKEN)
 
-    asyncio.get_event_loop().run_until_complete(run_bot())
+asyncio.run(run_bot())
