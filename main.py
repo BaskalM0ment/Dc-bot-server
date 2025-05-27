@@ -6,8 +6,9 @@ import interactions
 
 # Environment variables
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
-DEEPAI_API_KEY = os.getenv("DEEPAI_API_KEY", "").strip()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 PASTEBIN_API_KEY = os.getenv("PASTEBIN_API_KEY", "").strip()
+DEEPAI_API_KEY = os.getenv("DEEPAI_API_KEY", "").strip()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
 
 bot = interactions.Client(token=DISCORD_TOKEN)
@@ -89,7 +90,7 @@ async def ask(ctx: interactions.SlashContext, question: str):
     except Exception as e:
         await ctx.send(f"❌ Error: {e}", ephemeral=True)
 
-# /image command using DeepAI
+# /image command
 @interactions.slash_command(
     name="image",
     description="Generate an image using DeepAI"
@@ -107,16 +108,20 @@ async def image(ctx: interactions.SlashContext, prompt: str):
         "api-key": DEEPAI_API_KEY
     }
 
-    data = {
-        "text": prompt
-    }
-
     try:
-        response = requests.post("https://api.deepai.org/api/text2img", headers=headers, data=data)
+        response = requests.post(
+            "https://api.deepai.org/api/text2img",
+            data={'text': prompt},
+            headers=headers
+        )
         response.raise_for_status()
         image_url = response.json()["output_url"]
 
-        await ctx.send(image_url)
+        # Download the image
+        img_data = requests.get(image_url).content
+        file = interactions.File(img_data, file_name="image.png")
+
+        await ctx.send(files=file)
 
     except Exception as e:
         await ctx.send(f"❌ Error generating image: {e}", ephemeral=True)
